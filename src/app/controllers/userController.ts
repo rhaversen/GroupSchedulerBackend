@@ -45,6 +45,7 @@ export async function register (req: Request, res: Response, next: NextFunction)
 	logger.info(`Attempting to register user with email: ${req.body.email ?? 'N/A'}`)
 
 	const body: Record<string, unknown> = {
+		username: req.body.username,
 		email: req.body.email,
 		password: req.body.password,
 		confirmPassword: req.body.confirmPassword
@@ -64,6 +65,7 @@ export async function register (req: Request, res: Response, next: NextFunction)
 
 		if (existingUser === null) {
 			const newUser = await UserModel.create({
+				username: body.username,
 				email: body.email,
 				password: body.password
 			})
