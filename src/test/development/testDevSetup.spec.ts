@@ -4,8 +4,6 @@ import { describe, it } from 'mocha'
 describe('Development Setup', function () {
 	before(function () {
 		// Setting up environment variables for testing
-		process.env.SUMUP_API_KEY = 'DUMMY_SUMUP_API_KEY'
-		process.env.SUMUP_MERCHANT_CODE = 'DUMMY_SUMUP_MERCHANT_CODE'
 	})
 
 	after(function () {
