@@ -11,6 +11,6 @@ export default (function (err: Error, req: Request, res: Response, next: NextFun
 		logger.error('Unhandled error', { error: err })
 	}
 
-	res.status(500).json({ error: 'Der skete en fejl, prøv igen senere' })
+	res.status(500).json({ error: 'An unexpected error occurred. Please try again later.' })
 	next()
 })

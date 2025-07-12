@@ -1,7 +1,6 @@
 {
     "version": "0.2",
-    "language": "en-US,da-DK",
-    "import": ["@cspell/dict-da-dk/cspell-ext.json"],
+    "language": "en-US",
     "ignorePaths": [
         "node_modules/**",
         ".next/**",
@@ -19,17 +18,11 @@
         "dist/**"
     ],
     "ignoreWords": [
-        "KHTML",
-        "SUMUP",
-        "sumup",
         "BETTERSTACK",
         "Logtail",
         "logtail",
         "readyz",
         "livez",
-        "chunkname",
-        "unpair",
-        "Unpairing",
-        "unpairing"
+        "deepcode"
     ]
 }

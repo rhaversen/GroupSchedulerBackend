@@ -25,13 +25,13 @@ const configurePassport = (passport: PassportStatic): void => {
 			const user = await UserModel.findOne({ email }).exec()
 			if (user === null || user === undefined) {
 				logger.warn(`User login failed: User with email ${email} not found`)
-				return done(null, false, { message: 'User med email ' + email + ' findes ikke.' })
+				return done(null, false, { message: 'User with email ' + email + ' not found' })
 			}
 
 			const isMatch = await user.comparePassword(password)
 			if (!isMatch) {
 				logger.warn(`User login failed: Invalid password for user ${email}`)
-				return done(null, false, { message: 'Ugyldigt kodeord' })
+				return done(null, false, { message: 'Invalid password for user ' + email })
 			}
 
 			logger.info(`User ${email} logged in successfully`)
@@ -60,7 +60,7 @@ const configurePassport = (passport: PassportStatic): void => {
 			}
 
 			logger.warn(`User not found during deserialization: ID ${id}`)
-			return done(new Error('Bruger ikke fundet'), false)
+			return done(new Error('User not found'), false) // User not found
 		} catch (err) {
 			if (err instanceof Error) {
 				logger.error(`Error during deserialization: ${err.message}`, { error: err })
