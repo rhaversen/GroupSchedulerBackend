@@ -1,0 +1,47 @@
+{
+	"expressPort": 5000,
+	"mongoose": {
+		"retrySettings": {
+			"maxAttempts": 5,
+			"interval": 5000
+		},
+		"options": {
+			"retryWrites": "true",
+			"appName": "main",
+			"autoIndex": false
+		}
+	},
+	"bcrypt": {
+		"saltRounds": 1
+	},
+	"cors": {
+		"origin": "http://localhost:3000",
+		"credentials": true
+	},
+	"cookieOptions": {
+		"httpOnly": true,
+		"secure": false,
+		"SameSite": "strict"
+	},
+	"session": {
+		"expiry": 5184000000
+	},
+	"webhook": {
+		"cors": {
+			"origin": "*",
+			"credentials": true
+		}
+	},
+	"redis": {
+		"prefix": "group-scheduler-backend-development:"
+	},
+	"user": {
+		"verificationExpiry": 86400000,
+		"passwordResetExpiry": 86400000
+	},
+	"microservices": {
+		"solver": {
+			"host": "http://localhost:5001"
+		}
+	}
+}

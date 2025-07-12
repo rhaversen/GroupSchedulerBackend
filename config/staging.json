@@ -1,0 +1,47 @@
+{
+	"expressPort": 5000,
+	"mongoose": {
+		"retrySettings": {
+			"maxAttempts": 5,
+			"interval": 5000
+		},
+		"options": {
+			"retryWrites": "true",
+			"appName": "staging",
+			"autoIndex": true
+		}
+	},
+	"bcrypt": {
+		"saltRounds": 1
+	},
+	"cors": {
+		"origin": "https://staging.raindate.net",
+		"credentials": true
+	},
+	"cookieOptions": {
+		"httpOnly": true,
+		"secure": true,
+		"SameSite": "strict"
+	},
+	"session": {
+		"expiry": 5184000000
+	},
+	"webhook": {
+		"cors": {
+			"origin": "*",
+			"credentials": true
+		}
+	},
+	"redis": {
+		"prefix": "group-scheduler-backend-staging:"
+	},
+	"user": {
+		"verificationExpiry": 86400000,
+		"passwordResetExpiry": 86400000
+	},
+	"microservices": {
+		"solver": {
+			"host": "http://solver.group-scheduler-staging.svc.cluster.local"
+		}
+	}
+}

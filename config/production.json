@@ -1,0 +1,47 @@
+{
+	"expressPort": 5000,
+	"mongoose": {
+		"retrySettings": {
+			"maxAttempts": 5,
+			"interval": 5000
+		},
+		"options": {
+			"retryWrites": "true",
+			"appName": "main",
+			"autoIndex": true
+		}
+	},
+	"bcrypt": {
+		"saltRounds": 10
+	},
+	"cors": {
+		"origin": "https://raindate.net",
+		"credentials": true
+	},
+	"cookieOptions": {
+		"httpOnly": true,
+		"secure": true,
+		"SameSite": "strict"
+	},
+	"session": {
+		"expiry": 5184000000
+	},
+	"webhook": {
+		"cors": {
+			"origin": "*",
+			"credentials": true
+		}
+	},
+	"redis": {
+		"prefix": "group-scheduler-backend-production:"
+	},
+	"user": {
+		"verificationExpiry": 86400000,
+		"passwordResetExpiry": 86400000
+	},
+	"microservices": {
+		"solver": {
+			"host": "http://solver.group-scheduler-production.svc.cluster.local"
+		}
+	}
+}
