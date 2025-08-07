@@ -1,5 +1,6 @@
 import { Router } from 'express'
 
+import { ensureAuthenticated } from '../controllers/authController.js'
 import {
 	deleteSession,
 	getCurrentSession,
@@ -25,6 +26,7 @@ const router = Router()
  * @returns {string} res.body[].userAgent - User agent string.
  */
 router.get('/',
+	ensureAuthenticated,
 	getSessions
 )
 
@@ -45,6 +47,7 @@ router.get('/',
  * @returns {string} res.body.userAgent - User agent string.
  */
 router.get('/current',
+	ensureAuthenticated,
 	getCurrentSession
 )
 
@@ -56,6 +59,7 @@ router.get('/current',
  * @returns {number} res.status - The status code of the HTTP response (204 No Content).
  */
 router.delete('/:id',
+	ensureAuthenticated,
 	deleteSession
 )
 
