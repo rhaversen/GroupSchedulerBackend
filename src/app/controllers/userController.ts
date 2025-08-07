@@ -103,7 +103,7 @@ export async function getUser (req: Request, res: Response, next: NextFunction):
 			return
 		}
 
-		const isCurrentUser = user !== undefined && user.id !== paramUser.id
+		const isCurrentUser = user !== undefined && user.id === paramUser.id
 
 		const transformedUser = await transformUser(paramUser, isCurrentUser)
 
