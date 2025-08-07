@@ -18,6 +18,7 @@ import passport from 'passport'
 
 import globalErrorHandler from './middleware/globalErrorHandler.js'
 import authRoutes from './routes/auth.js'
+import eventRoutes from './routes/events.js'
 import serviceRoutes from './routes/service.js'
 import sessionRoutes from './routes/sessions.js'
 import userRoutes from './routes/users.js'
@@ -100,6 +101,7 @@ app.use((req, _res, next) => {
 // Use all routes
 app.use('/api/service', serviceRoutes)
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/events', eventRoutes)
 app.use('/api/v1/sessions', sessionRoutes)
 app.use('/api/v1/users', userRoutes)
 
