@@ -54,7 +54,7 @@ router.get('/:id',
 )
 
 /**
- * @route PUT /api/v1/users/:id
+ * @route PATCH /api/v1/users/:id
  * @description Update user by ID (partial update).
  * @access Private
  * @param {string} req.params.id - The ID of the user.
@@ -72,7 +72,7 @@ router.get('/:id',
  * @returns {Date} res.body.createdAt - The creation timestamp.
  * @returns {Date} res.body.updatedAt - The last update timestamp.
  */
-router.put('/:id',
+router.patch('/:id',
 	ensureAuthenticated,
 	updateUser
 )
