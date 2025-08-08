@@ -64,12 +64,12 @@ router.post('/request-confirmation',
 )
 
 /**
- * @route POST /api/v1/users/request-password-reset
+ * @route POST /api/v1/users/request-password-reset-email
  * @description Request a password reset email.
  * @access Public
  * @param {string} req.body.email - The email of the user requesting password reset.
  */
-router.post('/request-password-reset',
+router.post('/request-password-reset-email',
 	requestPasswordResetEmail
 )
 
