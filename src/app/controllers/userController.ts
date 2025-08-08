@@ -119,6 +119,28 @@ export async function getUser (req: Request, res: Response, next: NextFunction):
 	}
 }
 
+export async function getMe (req: Request, res: Response, next: NextFunction): Promise<void> {
+	const user = req.user as IUser | undefined
+	if (user === undefined) {
+		logger.warn('Get me failed: Unauthorized request')
+		res.status(401).json({ error: 'Unauthorized' })
+		return
+	}
+
+	try {
+		const transformedUser = await transformUser(user, true)
+		logger.debug(`Retrieved current user successfully: ID ${user.id}`)
+		res.status(200).json(transformedUser)
+	} catch (error) {
+		logger.error(`Get me failed: Error transforming current user ID ${user.id}`, { error })
+		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
+			res.status(400).json({ error: error.message })
+		} else {
+			next(error)
+		}
+	}
+}
+
 export async function updateUser (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const userId = req.params.id
 	logger.info(`Attempting to update user: ID ${userId}`)

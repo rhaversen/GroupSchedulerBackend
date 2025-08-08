@@ -5,7 +5,8 @@ import {
 	deleteUser,
 	getUser,
 	register,
-	updateUser
+	updateUser,
+	getMe
 } from '../controllers/userController.js'
 
 const router = Router()
@@ -35,6 +36,19 @@ router.post('/register',
  */
 router.get('/:id',
 	getUser
+)
+
+/**
+ * @route GET /api/v1/users/me
+ * @description Get the authenticated user's information.
+ * @access Private
+ * @param {Object} req.user - The authenticated user object.
+ * @returns {number} res.status - The status code of the HTTP response.
+ * @returns {Object} res.body - The authenticated user object with full details.
+ */
+router.get('/me',
+	ensureAuthenticated,
+	getMe
 )
 
 /**
