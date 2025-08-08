@@ -43,5 +43,10 @@
 		"solver": {
 			"host": "http://localhost:5001"
 		}
-	}
+	},
+	"frontendDomain": "http://localhost:3000",
+    "email": {
+        "from": "RainDate <noreply@raindate.net>",
+        "port": 587
+    }
 }

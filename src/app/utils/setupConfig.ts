@@ -21,7 +21,10 @@ const AppConfig = {
 	sessionExpiry: config.get('session.expiry') as number,
 	redisPrefix: config.get('redis.prefix') as string,
 	verificationExpiry: config.get('user.verificationExpiry') as number,
-	passwordResetExpiry: config.get('user.passwordResetExpiry') as number
+	passwordResetExpiry: config.get('user.passwordResetExpiry') as number,
+	frontendDomain: config.get('frontendDomain') as string,
+	emailFrom: config.get('email.from') as string,
+	emailPort: config.get('email.port') as number
 }
 
 export default AppConfig

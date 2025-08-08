@@ -43,5 +43,10 @@
 		"solver": {
 			"host": "http://solver.group-scheduler-staging.svc.cluster.local"
 		}
-	}
+	},
+	"frontendDomain": "https://staging.raindate.net",
+    "email": {
+        "from": "RainDate <noreply@raindate.net>",
+        "port": 587
+    }
 }

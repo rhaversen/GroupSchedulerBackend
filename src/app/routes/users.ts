@@ -6,7 +6,12 @@ import {
 	getUser,
 	register,
 	updateUser,
-	getMe
+	getMe,
+	confirmUser,
+	requestConfirmationEmail,
+	requestPasswordResetEmail,
+	resetPassword,
+	updatePassword
 } from '../controllers/userController.js'
 
 const router = Router()
@@ -36,6 +41,61 @@ router.post('/register',
  */
 router.get('/:id',
 	getUser
+)
+
+/**
+ * @route POST /api/v1/users/confirm
+ * @description Confirm a user's email using a confirmation code.
+ * @access Public
+ * @param {string} req.query.confirmationCode - The confirmation code.
+ */
+router.post('/confirm',
+	confirmUser
+)
+
+/**
+ * @route POST /api/v1/users/request-confirmation
+ * @description Request a new confirmation email to be sent if the account is not yet confirmed.
+ * @access Public
+ * @param {string} req.body.email - The email of the user requesting a new confirmation email.
+ */
+router.post('/request-confirmation',
+	requestConfirmationEmail
+)
+
+/**
+ * @route POST /api/v1/users/request-password-reset
+ * @description Request a password reset email.
+ * @access Public
+ * @param {string} req.body.email - The email of the user requesting password reset.
+ */
+router.post('/request-password-reset',
+	requestPasswordResetEmail
+)
+
+/**
+ * @route POST /api/v1/users/reset-password
+ * @description Reset password using a passwordResetCode.
+ * @access Public
+ * @param {string} req.body.passwordResetCode - The password reset code.
+ * @param {string} req.body.newPassword - The new password.
+ * @param {string} req.body.confirmNewPassword - Confirmation of the new password.
+ */
+router.post('/reset-password',
+	resetPassword
+)
+
+/**
+ * @route PATCH /api/v1/users/me/password
+ * @description Update password for the authenticated user.
+ * @access Private
+ * @param {string} req.body.currentPassword - Current password.
+ * @param {string} req.body.newPassword - New password.
+ * @param {string} req.body.confirmNewPassword - Confirm new password.
+ */
+router.patch('/me/password',
+	ensureAuthenticated,
+	updatePassword
 )
 
 /**
