@@ -16,12 +16,20 @@ const envSecrets = [
 	// Redis
 	'REDIS_HOST',
 	'REDIS_PORT',
-	'REDIS_PASSWORD'
+	'REDIS_PASSWORD',
+	// Email
+	'SMTP_SERVER',
+	'SMTP_LOGIN',
+	'SMTP_KEY'
 ]
 
 const envSecretsDev = [
 	'NODE_ENV',
-	'SESSION_SECRET'
+	'SESSION_SECRET',
+	// Email
+	'SMTP_SERVER',
+	'SMTP_LOGIN',
+	'SMTP_KEY'
 ]
 
 const envSecretsTest = [
