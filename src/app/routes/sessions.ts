@@ -14,16 +14,7 @@ const router = Router()
  * @description Get all sessions of authenticated user.
  * @access Private
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Array<Object>} res.body - An array of session objects.
- * @returns {string} res.body[]._id - Session ID.
- * @returns {Date} res.body[].docExpires - Document expiry date.
- * @returns {Date|null} res.body[].sessionExpires - Session expiry date (null for non-persistent sessions).
- * @returns {boolean} res.body[].stayLoggedIn - Whether session is persistent.
- * @returns {string|null} res.body[].userId - User ID of session owner.
- * @returns {string} res.body[].ipAddress - IP address of the session.
- * @returns {Date} res.body[].loginTime - Login timestamp.
- * @returns {Date} res.body[].lastActivity - Last activity timestamp.
- * @returns {string} res.body[].userAgent - User agent string.
+ * @returns {Array<Object>} res.body - Array of sessions with {_id, docExpires, sessionExpires, stayLoggedIn, userId, ipAddress, loginTime, lastActivity, userAgent}.
  */
 router.get('/',
 	ensureAuthenticated,
@@ -35,16 +26,7 @@ router.get('/',
  * @description Get the current session.
  * @access Private
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The current session object.
- * @returns {string} res.body._id - Session ID.
- * @returns {Date} res.body.docExpires - Document expiry date.
- * @returns {Date|null} res.body.sessionExpires - Session expiry date (null for non-persistent sessions).
- * @returns {boolean} res.body.stayLoggedIn - Whether session is persistent.
- * @returns {string|null} res.body.userId - User ID of session owner.
- * @returns {string} res.body.ipAddress - IP address of the session.
- * @returns {Date} res.body.loginTime - Login timestamp.
- * @returns {Date} res.body.lastActivity - Last activity timestamp.
- * @returns {string} res.body.userAgent - User agent string.
+ * @returns {Object} res.body - The current session object with {_id, docExpires, sessionExpires, stayLoggedIn, userId, ipAddress, loginTime, lastActivity, userAgent}.
  */
 router.get('/current',
 	ensureAuthenticated,
@@ -56,7 +38,7 @@ router.get('/current',
  * @description Delete a session by ID.
  * @access Private
  * @param {string} req.params.id - The ID of the session to be deleted.
- * @returns {number} res.status - The status code of the HTTP response (204 No Content).
+ * @returns {number} res.status - The status code of the HTTP response.
  */
 router.delete('/:id',
 	ensureAuthenticated,

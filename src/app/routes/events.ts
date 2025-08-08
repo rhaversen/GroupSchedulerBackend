@@ -31,21 +31,10 @@ const router = Router()
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
  * @param {number} req.body.duration - Duration in milliseconds.
- * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
- * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
- * @returns {number} res.status - The status code of the HTTP response (201 Created).
+ * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
+ * @param {Array<{start:number,end:number}>} [req.body.preferredTimes] - Preferred time ranges.
+ * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The created event object.
- * @returns {string} res.body._id - The event ID.
- * @returns {string} res.body.name - The event name.
- * @returns {string} res.body.description - The event description.
- * @returns {Array} res.body.participants - Array of participant objects.
- * @returns {Object} res.body.timeWindow - Time window object.
- * @returns {number} res.body.duration - Duration in milliseconds.
- * @returns {string} res.body.status - Event status (defaults to 'draft').
- * @returns {Array} res.body.blackoutPeriods - Blackout periods array.
- * @returns {Array} [res.body.preferredTimes] - Preferred times array if provided.
- * @returns {Date} res.body.createdAt - Creation timestamp.
- * @returns {Date} res.body.updatedAt - Last update timestamp.
  */
 router.post('/',
 	ensureAuthenticated,
@@ -58,18 +47,6 @@ router.post('/',
  * @access Private
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Array} res.body - Array of event objects sorted by start time.
- * @returns {string} res.body[]._id - The event ID.
- * @returns {string} res.body[].name - The event name.
- * @returns {string} res.body[].description - The event description.
- * @returns {Array} res.body[].participants - Array of participant objects (userId and role only).
- * @returns {Object} res.body[].timeWindow - Time window object.
- * @returns {number} res.body[].duration - Duration in milliseconds.
- * @returns {string} res.body[].status - Event status.
- * @returns {number} [res.body[].scheduledTime] - Scheduled time if set.
- * @returns {Array} res.body[].blackoutPeriods - Blackout periods array.
- * @returns {Array} [res.body[].preferredTimes] - Preferred times array if set.
- * @returns {Date} res.body[].createdAt - Creation timestamp.
- * @returns {Date} res.body[].updatedAt - Last update timestamp.
  */
 router.get('/user',
 	ensureAuthenticated,
@@ -83,18 +60,6 @@ router.get('/user',
  * @param {string} req.params.id - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The event object.
- * @returns {string} res.body._id - The event ID.
- * @returns {string} res.body.name - The event name.
- * @returns {string} res.body.description - The event description.
- * @returns {Array} res.body.participants - Array of participant objects (userId and role only).
- * @returns {Object} res.body.timeWindow - Time window object.
- * @returns {number} res.body.duration - Duration in milliseconds.
- * @returns {string} res.body.status - Event status.
- * @returns {number} [res.body.scheduledTime] - Scheduled time if set.
- * @returns {Array} res.body.blackoutPeriods - Blackout periods array.
- * @returns {Array} [res.body.preferredTimes] - Preferred times array if set.
- * @returns {Date} res.body.createdAt - Creation timestamp.
- * @returns {Date} res.body.updatedAt - Last update timestamp.
  */
 router.get('/:id',
 	ensureAuthenticated,
@@ -103,7 +68,7 @@ router.get('/:id',
 
 /**
  * @route PATCH /api/v1/events/:id
- * @description Update event by ID (partial update).
+ * @description Partially update event by ID.
  * @access Private (admins only)
  * @param {string} req.params.id - The ID of the event.
  * @param {string} [req.body.name] - The new name (optional).
@@ -123,18 +88,6 @@ router.get('/:id',
  * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated event object.
- * @returns {string} res.body._id - The event ID.
- * @returns {string} res.body.name - The event name.
- * @returns {string} res.body.description - The event description.
- * @returns {Array} res.body.participants - Array of participant objects.
- * @returns {Object} res.body.timeWindow - Time window object.
- * @returns {number} res.body.duration - Duration in milliseconds.
- * @returns {string} res.body.status - Event status.
- * @returns {number} [res.body.scheduledTime] - Scheduled time if set.
- * @returns {Array} res.body.blackoutPeriods - Blackout periods array.
- * @returns {Array} [res.body.preferredTimes] - Preferred times array if set.
- * @returns {Date} res.body.createdAt - Creation timestamp.
- * @returns {Date} res.body.updatedAt - Last update timestamp.
  */
 router.patch('/:id',
 	ensureAuthenticated,
@@ -146,7 +99,7 @@ router.patch('/:id',
  * @description Delete event by ID.
  * @access Private (admins only)
  * @param {string} req.params.id - The ID of the event.
- * @returns {number} res.status - The status code of the HTTP response (204 No Content).
+ * @returns {number} res.status - The status code of the HTTP response.
  */
 router.delete('/:id',
 	ensureAuthenticated,
@@ -155,17 +108,13 @@ router.delete('/:id',
 
 /**
  * @route PATCH /api/v1/events/:eventId/settings
- * @description Update user's settings for a specific event (partial update).
+ * @description Partially update user's settings for a specific event.
  * @access Private (participants only)
  * @param {string} req.params.eventId - The ID of the event.
  * @param {number} [req.body.customPaddingAfter] - Custom padding after event (optional).
  * @param {string} [req.body.availabilityStatus] - Availability status: 'available', 'unavailable', 'tentative' (optional).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated user event settings object.
- * @returns {string} res.body.userId - The user ID.
- * @returns {string} res.body.eventId - The event ID.
- * @returns {number} [res.body.customPaddingAfter] - Custom padding after event if set.
- * @returns {string} res.body.availabilityStatus - Current availability status.
  */
 router.patch('/:eventId/settings',
 	ensureAuthenticated,
@@ -179,10 +128,6 @@ router.patch('/:eventId/settings',
  * @param {string} req.params.eventId - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The user event settings object.
- * @returns {string} res.body.userId - The user ID.
- * @returns {string} res.body.eventId - The event ID.
- * @returns {number} [res.body.customPaddingAfter] - Custom padding after event if set.
- * @returns {string} res.body.availabilityStatus - Current availability status.
  */
 router.get('/:eventId/settings',
 	ensureAuthenticated,
@@ -191,13 +136,13 @@ router.get('/:eventId/settings',
 
 /**
  * @route PATCH /api/v1/events/:id/participants/role
- * @description Update a participant's role in an event (partial update).
+ * @description Update a participant's role in an event.
  * @access Private (admins and creators only)
  * @param {string} req.params.id - The ID of the event.
  * @param {string} req.body.userId - The user ID whose role to update.
  * @param {string} req.body.role - The new role ('creator', 'admin', 'participant').
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The updated event object with all fields.
+ * @returns {Object} res.body - The updated event object.
  */
 router.patch('/:id/participants/role',
 	ensureAuthenticated,

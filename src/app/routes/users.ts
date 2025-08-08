@@ -20,15 +20,6 @@ const router = Router()
  * @param {string} req.body.confirmPassword - The password confirmation.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The authentication result and user object.
- * @returns {boolean} res.body.auth - Authentication status.
- * @returns {Object} res.body.user - The created user object.
- * @returns {string} res.body.user._id - The user ID.
- * @returns {string} res.body.user.username - The username.
- * @returns {string} res.body.user.email - The email.
- * @returns {boolean} res.body.user.confirmed - The confirmation status.
- * @returns {Date|null} res.body.user.expirationDate - The expiration date.
- * @returns {Date} res.body.user.createdAt - The creation timestamp.
- * @returns {Date} res.body.user.updatedAt - The last update timestamp.
  */
 router.post('/register',
 	register
@@ -40,14 +31,7 @@ router.post('/register',
  * @access Public (limited info) / Private (full info for own user)
  * @param {string} req.params.id - The ID of the user.
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The user object.
- * @returns {string} res.body._id - The user ID.
- * @returns {string} res.body.username - The username.
- * @returns {string|null} res.body.email - The email (only for current user, null otherwise).
- * @returns {Date|null} res.body.expirationDate - The expiration date (only for current user, null otherwise).
- * @returns {boolean|null} res.body.confirmed - The confirmation status (only for current user, null otherwise).
- * @returns {Date} res.body.createdAt - The creation timestamp.
- * @returns {Date} res.body.updatedAt - The last update timestamp.
+ * @returns {Object} res.body - The user object. For other users: {_id, username, createdAt, updatedAt, email:null, expirationDate:null, confirmed:null}. For self: adds {email, expirationDate, confirmed}.
  */
 router.get('/:id',
 	getUser
@@ -55,7 +39,7 @@ router.get('/:id',
 
 /**
  * @route PATCH /api/v1/users/:id
- * @description Update user by ID (partial update).
+ * @description Partially update user by ID.
  * @access Private
  * @param {string} req.params.id - The ID of the user.
  * @param {string} [req.body.username] - The new username (optional).
@@ -63,14 +47,7 @@ router.get('/:id',
  * @param {string} [req.body.password] - The new password (optional).
  * @param {string} [req.body.confirmPassword] - The password confirmation (required if password provided).
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The updated user object with all fields for current user.
- * @returns {string} res.body._id - The user ID.
- * @returns {string} res.body.username - The username.
- * @returns {string|null} res.body.email - The email (only for current user).
- * @returns {Date|null} res.body.expirationDate - The expiration date (only for current user).
- * @returns {boolean|null} res.body.confirmed - The confirmation status (only for current user).
- * @returns {Date} res.body.createdAt - The creation timestamp.
- * @returns {Date} res.body.updatedAt - The last update timestamp.
+ * @returns {Object} res.body - The updated user object.
  */
 router.patch('/:id',
 	ensureAuthenticated,
@@ -83,7 +60,7 @@ router.patch('/:id',
  * @access Private
  * @param {string} req.params.id - The ID of the user.
  * @param {boolean} req.body.confirm - Confirmation flag (must be true).
- * @returns {number} res.status - The status code of the HTTP response (204 No Content).
+ * @returns {number} res.status - The status code of the HTTP response.
  */
 router.delete('/:id',
 	ensureAuthenticated,
