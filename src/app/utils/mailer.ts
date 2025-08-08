@@ -49,17 +49,17 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 
 // Function to send confirmation email
 export const sendConfirmationEmail = async (email: string, confirmationLink: string, confirmationCode: string): Promise<void> => {
-	const subject = 'Please confirm your email address within 24 hours'
-	const text = `Please confirm your email by pasting this link into your browser: ${confirmationLink}\nYour confirmation code is: ${confirmationCode}\n(Your email inbox does not support HTML)`
+	const subject = 'Welcome! Please confirm your email (24h)'
+	const text = `Welcome to RainDate! Let's get you set up.\n\nPlease confirm your email by visiting: ${confirmationLink}\nYour confirmation code: ${confirmationCode}\n\nIf you didn't request this, you can safely ignore this message.`
 	const html = `
-<div style="font-family:Arial, sans-serif; background-color:#f7f7f7; padding:20px; border-radius:5px;">
-	<h2>Confirm Your Email Address</h2>
-	<p>Please confirm your email by clicking the button below:</p>
-	<a href="${confirmationLink}" style="display:inline-block; padding:10px 20px; background-color:#007bff; color:#fff; text-decoration:none; border-radius:5px;">Confirm Email</a>
-	<p>Your confirmation code is: <strong>${confirmationCode}</strong></p>
-	<p>If the button does not work, copy and paste the following URL:</p>
-	<p style="word-break: break-all;">${confirmationLink}</p>
-	<p>This link is valid for 24 hours.</p>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
+	<h2 style="margin:0 0 8px; color:#0f172a;">Welcome to RainDate 👋</h2>
+	<p style="margin:0 0 16px;">We’re excited to have you! Please confirm your email to finish setting up your account.</p>
+	<a href="${confirmationLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm my email</a>
+	<p style="margin:16px 0 8px;">Prefer a code? Use: <strong>${confirmationCode}</strong></p>
+	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
+	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${confirmationLink}</p>
+	<p style="margin:0; color:#475569;">The link is valid for 24 hours. Didn’t try to sign up? No worries, you can ignore this email.</p>
 </div>
 `
 	await sendEmail(email, subject, text, html)
@@ -67,17 +67,17 @@ export const sendConfirmationEmail = async (email: string, confirmationLink: str
 
 // Function to send password reset email
 export const sendPasswordResetEmail = async (email: string, passwordResetLink: string, passwordResetCode: string): Promise<void> => {
-	const subject = 'Password reset requested'
-	const text = `Please reset your password by pasting this link into your browser: ${passwordResetLink}\nYour password reset code is: ${passwordResetCode}\nIf you didn't request a password reset, it's safe to ignore this mail.\n(Your email inbox does not support HTML)`
+	const subject = 'Need a fresh start? Reset your password'
+	const text = `We've got your request to reset your password.\n\nReset it here: ${passwordResetLink}\nYour reset code: ${passwordResetCode}\n\nIf you didn't request this, feel free to ignore this email.`
 	const html = `
-<div style="font-family:Arial, sans-serif; background-color:#f7f7f7; padding:20px; border-radius:5px;">
-	<h2>Password Reset Request</h2>
-	<p>To reset your password, click the button below:</p>
-	<a href="${passwordResetLink}" style="display:inline-block; padding:10px 20px; background-color:#28a745; color:#fff; text-decoration:none; border-radius:5px;">Reset Password</a>
-	<p>Your password reset code is: <strong>${passwordResetCode}</strong></p>
-	<p>If the button does not work, copy and paste this URL:</p>
-	<p style="word-break: break-all;">${passwordResetLink}</p>
-	<p>If you didn't request a password reset, please ignore this email.</p>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
+	<h2 style="margin:0 0 8px; color:#0f172a;">Let’s get you back in</h2>
+	<p style="margin:0 0 16px;">Forgot your password? It happens. Reset it safely using the button below.</p>
+	<a href="${passwordResetLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Reset my password</a>
+	<p style="margin:16px 0 8px;">Prefer a code? Use: <strong>${passwordResetCode}</strong></p>
+	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
+	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${passwordResetLink}</p>
+	<p style="margin:0; color:#475569;">Didn’t ask for a reset? You can safely ignore this email.</p>
 </div>
 `
 
@@ -86,14 +86,14 @@ export const sendPasswordResetEmail = async (email: string, passwordResetLink: s
 
 // Function to send email not registered email
 export const sendEmailNotRegisteredEmail = async (email: string): Promise<void> => {
-	const subject = 'Email not signed up'
-	const text = 'A password reset has been requested for this email, but it has not been used to sign up for a user on raindate.net. Please sign up instead. \n If you didn\'t request a password reset, it\'s safe to ignore this mail. Someone probably entered your email by mistake.'
+	const subject = 'We couldn\'t find an account for this email — but why not sign up?'
+	const text = 'Looks like someone tried to reset a password for this email, but there\'s no RainDate account yet. No worries! You can create one here: https://raindate.net/signup\n\nIf this wasn\'t you, you can ignore this message.'
 	const html = `
-<div style="font-family:Arial, sans-serif; background-color:#f7f7f7; padding:20px; border-radius:5px;">
-	<h2>Email Not Registered</h2>
-	<p>A password reset was requested for this email, but it is not registered. Please sign up to enjoy our services.</p>
-	<a href="https://raindate.net/signup" style="display:inline-block; padding:10px 20px; background-color:#dc3545; color:#fff; text-decoration:none; border-radius:5px;">Sign Up</a>
-	<p>If you didn't request this, please ignore this email.</p>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
+	<h2 style="margin:0 0 8px; color:#0f172a;">We couldn't find your account</h2>
+	<p style="margin:0 0 16px;">A password reset was requested for this email, but there isn't an account yet — but why not sign up?</p>
+	<a href="https://raindate.net/signup" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Create my account</a>
+	<p style="margin:16px 0 0; color:#475569;">If this wasn’t you, feel free to ignore this email.</p>
 </div>
 `
 
