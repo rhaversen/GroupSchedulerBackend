@@ -10,8 +10,23 @@ import config from './setupConfig.js'
 // Config
 const {
 	emailPort,
-	emailFrom
+	emailFrom,
+	verificationExpiry,
+	passwordResetExpiry
 } = config
+
+// Format milliseconds into a friendly duration string (e.g., 24 hours, 90 minutes)
+const formatDuration = (ms: number): string => {
+	const seconds = Math.floor(ms / 1000)
+	const minutes = Math.floor(seconds / 60)
+	const hours = Math.floor(minutes / 60)
+	const days = Math.floor(hours / 24)
+
+	if (days >= 1) { return `${days} day${days === 1 ? '' : 's'}` }
+	if (hours >= 1) { return `${hours} hour${hours === 1 ? '' : 's'}` }
+	if (minutes >= 1) { return `${minutes} minute${minutes === 1 ? '' : 's'}` }
+	return `${seconds} second${seconds === 1 ? '' : 's'}`
+}
 
 // Generic function to send email
 export const sendEmail = async (to: string, subject: string, text: string, html = ''): Promise<void> => {
@@ -49,37 +64,63 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 
 // Function to send confirmation email
 export const sendConfirmationEmail = async (email: string, confirmationLink: string, confirmationCode: string): Promise<void> => {
-	const subject = 'Welcome! Please confirm your email (24h)'
-	const text = `Welcome to RainDate! Let's get you set up.\n\nPlease confirm your email by visiting: ${confirmationLink}\nYour confirmation code: ${confirmationCode}\n\nIf you didn't request this, you can safely ignore this message.`
+	const expiresIn = formatDuration(verificationExpiry)
+	const subject = `Welcome! Please confirm your email (${expiresIn})`
+	const text = `
+Welcome to RainDate! Let's get you set up.
+
+Please confirm your email by visiting: ${confirmationLink}
+Your confirmation code: ${confirmationCode}
+Prefer a code? Go to https://raindate.net/confirm and enter your code.
+
+IMPORTANT: This link/code expires in ${expiresIn}. If you don't confirm in time, the unverified account will be deleted.
+
+If you didn't request this, you can safely ignore this message.
+`.trim()
 	const html = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
 	<h2 style="margin:0 0 8px; color:#0f172a;">Welcome to RainDate 👋</h2>
 	<p style="margin:0 0 16px;">We’re excited to have you! Please confirm your email to finish setting up your account.</p>
 	<a href="${confirmationLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm my email</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Use: <strong>${confirmationCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm" style="color:#2563eb; text-decoration:underline;">https://raindate.net/confirm</a> and enter: <strong>${confirmationCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${confirmationLink}</p>
-	<p style="margin:0; color:#475569;">The link is valid for 24 hours. Didn’t try to sign up? No worries, you can ignore this email.</p>
+	<div style="margin:8px 0 0; padding:12px; background-color:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#991b1b;">
+		<strong>Important:</strong> This link/code expires in ${expiresIn}. If you don’t confirm in time, the unverified account will be deleted.
+	</div>
+	<p style="margin:8px 0 0; color:#64748b;">Didn’t try to sign up? No worries, you can ignore this email.</p>
 </div>
-`
+`.trim()
 	await sendEmail(email, subject, text, html)
 }
 
 // Function to send password reset email
 export const sendPasswordResetEmail = async (email: string, passwordResetLink: string, passwordResetCode: string): Promise<void> => {
+	const expiresIn = formatDuration(passwordResetExpiry)
 	const subject = 'Need a fresh start? Reset your password'
-	const text = `We've got your request to reset your password.\n\nReset it here: ${passwordResetLink}\nYour reset code: ${passwordResetCode}\n\nIf you didn't request this, feel free to ignore this email.`
+	const text = `
+We've got your request to reset your password.
+
+Reset it here: ${passwordResetLink}
+Your reset code: ${passwordResetCode}
+Prefer a code? Go to https://raindate.net/reset-password and enter your code.
+
+This link/code expires in ${expiresIn}. After that, you'll need to request a new reset.
+
+If you didn't request this, feel free to ignore this email.
+`.trim()
 	const html = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
 	<h2 style="margin:0 0 8px; color:#0f172a;">Let’s get you back in</h2>
 	<p style="margin:0 0 16px;">Forgot your password? It happens. Reset it safely using the button below.</p>
 	<a href="${passwordResetLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Reset my password</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Use: <strong>${passwordResetCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/reset-password" style="color:#2563eb; text-decoration:underline;">https://raindate.net/reset-password</a> and enter: <strong>${passwordResetCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${passwordResetLink}</p>
-	<p style="margin:0; color:#475569;">Didn’t ask for a reset? You can safely ignore this email.</p>
+	<p style="margin:0; color:#475569;">This link/code expires in ${expiresIn}. After that, you'll need to request a new reset.</p>
+	<p style="margin:8px 0 0; color:#64748b;">Didn’t ask for a reset? You can safely ignore this email.</p>
 </div>
-`
+`.trim()
 
 	await sendEmail(email, subject, text, html)
 }
