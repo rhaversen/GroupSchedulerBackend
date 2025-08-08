@@ -172,7 +172,7 @@ userSchema.methods.comparePassword = async function (this: IUser, password: stri
 }
 
 userSchema.pre('save', async function (next) {
-	if (this.isNew) {
+	if (this.isNew && (this.confirmationCode == null)) {
 		await this.generateNewConfirmationCode()
 	}
 
