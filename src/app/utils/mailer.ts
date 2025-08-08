@@ -18,7 +18,7 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 	if (process.env.NODE_ENV === 'test') { return }
 
 	// Configure transporter
-	logger.debug('Creating email transporter')
+	logger.silly('Creating email transporter')
 	const transporter = nodemailer.createTransport({
 		host: process.env.SMTP_SERVER,
 		port: emailPort,
@@ -29,7 +29,7 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 		}
 	})
 
-	logger.debug('Created transporter')
+	logger.silly('Created transporter')
 
 	const mailOptions = {
 		from: emailFrom,
@@ -42,9 +42,9 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 	logger.debug('Sending email')
 	await transporter.sendMail(mailOptions)
 
-	logger.debug('Closing email transporter')
+	logger.silly('Closing email transporter')
 	transporter.close()
-	logger.debug('Email transporter closed')
+	logger.silly('Email transporter closed')
 }
 
 // Function to send confirmation email

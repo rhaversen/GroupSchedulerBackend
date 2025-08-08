@@ -42,14 +42,14 @@ export async function transformUser (
 }
 
 function generateConfirmationLink (confirmationCode: string): string {
-	const confirmationLink = `https://${frontendDomain}/confirm?confirmationCode=${confirmationCode}`
-	logger.silly(confirmationLink)
+	const confirmationLink = `${frontendDomain}/confirm?confirmationCode=${confirmationCode}`
+	logger.debug('Confirmation link generated:', { confirmationLink })
 	return confirmationLink
 }
 
 function generatePasswordResetLink (passwordResetCode: string): string {
-	const passwordResetLink = `https://${frontendDomain}/reset-password?passwordResetCode=${passwordResetCode}`
-	logger.silly(passwordResetLink)
+	const passwordResetLink = `${frontendDomain}/reset-password?passwordResetCode=${passwordResetCode}`
+	logger.debug('Password reset link generated:', { passwordResetLink })
 	return passwordResetLink
 }
 
@@ -378,9 +378,8 @@ export async function confirmUser (req: Request, res: Response, next: NextFuncti
 		user.confirmUser()
 		await user.save()
 
-		res.status(200).json({
-			message: 'Confirmation successful! Your account has been activated.'
-		})
+		const transformedUser = await transformUser(user, true)
+		res.status(200).json(transformedUser)
 	} catch (error) {
 		logger.error('User confirmation failed due to server error', { error })
 		next(error)
