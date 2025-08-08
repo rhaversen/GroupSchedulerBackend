@@ -22,7 +22,7 @@ spec:
     tls:
         -   hosts:
                 - www.raindate.net
-                - raindate.net.fun
+                - raindate.net
             secretName: backend-tls
     rules:
         -   host: raindate.net
