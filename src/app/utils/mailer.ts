@@ -12,7 +12,8 @@ const {
 	emailPort,
 	emailFrom,
 	verificationExpiry,
-	passwordResetExpiry
+	passwordResetExpiry,
+	frontendDomain
 } = config
 
 // Format milliseconds into a friendly duration string (e.g., 24 hours, 90 minutes)
@@ -71,7 +72,7 @@ Welcome to RainDate! Let's get you set up.
 
 Please confirm your email by visiting: ${confirmationLink}
 Your confirmation code: ${confirmationCode}
-Prefer a code? Go to https://raindate.net/confirm-email and enter your code.
+Prefer a code? Go to ${frontendDomain}/confirm-email and enter your code.
 
 IMPORTANT: This link/code expires in ${expiresIn}. If you don't confirm in time, the unverified account will be deleted.
 
@@ -82,7 +83,7 @@ If you didn't request this, you can safely ignore this message.
 	<h2 style="margin:0 0 8px; color:#0f172a;">Welcome to RainDate 👋</h2>
 	<p style="margin:0 0 16px;">We’re excited to have you! Please confirm your email to finish setting up your account.</p>
 	<a href="${confirmationLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm my email</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm-email" style="color:#2563eb; text-decoration:underline;">https://raindate.net/confirm-email</a> and enter: <strong>${confirmationCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="${frontendDomain}/confirm-email" style="color:#2563eb; text-decoration:underline;">${frontendDomain}/confirm-email</a> and enter: <strong>${confirmationCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${confirmationLink}</p>
 	<div style="margin:8px 0 0; padding:12px; background-color:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#991b1b;">
@@ -103,7 +104,7 @@ We've got your request to reset your password.
 
 Reset it here: ${passwordResetLink}
 Your reset code: ${passwordResetCode}
-Prefer a code? Go to https://raindate.net/reset-password and enter your code.
+Prefer a code? Go to ${frontendDomain}/reset-password and enter your code.
 
 This link/code expires in ${expiresIn}. After that, you'll need to request a new reset.
 
@@ -114,7 +115,7 @@ If you didn't request this, feel free to ignore this email.
 	<h2 style="margin:0 0 8px; color:#0f172a;">Let’s get you back in</h2>
 	<p style="margin:0 0 16px;">Forgot your password? It happens. Reset it safely using the button below.</p>
 	<a href="${passwordResetLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Reset my password</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/reset-password" style="color:#2563eb; text-decoration:underline;">https://raindate.net/reset-password</a> and enter: <strong>${passwordResetCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="${frontendDomain}/reset-password" style="color:#2563eb; text-decoration:underline;">${frontendDomain}/reset-password</a> and enter: <strong>${passwordResetCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${passwordResetLink}</p>
 	<p style="margin:0; color:#475569;">This link/code expires in ${expiresIn}. After that, you'll need to request a new reset.</p>
@@ -128,12 +129,12 @@ If you didn't request this, feel free to ignore this email.
 // Function to send email not registered email
 export const sendEmailNotRegisteredEmail = async (email: string): Promise<void> => {
 	const subject = 'We couldn\'t find an account for this email — but why not sign up?'
-	const text = 'Looks like someone tried to reset a password for this email, but there\'s no RainDate account yet. No worries! You can create one here: https://raindate.net/signup\n\nIf this wasn\'t you, you can ignore this message.'
+	const text = `Looks like someone tried to reset a password for this email, but there's no RainDate account yet. No worries! You can create one here: ${frontendDomain}/signup\n\nIf this wasn't you, you can ignore this message.`
 	const html = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#f5f8ff; padding:24px; border-radius:12px; color:#0f172a;">
 	<h2 style="margin:0 0 8px; color:#0f172a;">We couldn't find your account</h2>
 	<p style="margin:0 0 16px;">A password reset was requested for this email, but there isn't an account yet — but why not sign up?</p>
-	<a href="https://raindate.net/signup" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Create my account</a>
+	<a href="${frontendDomain}/signup" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Create my account</a>
 	<p style="margin:16px 0 0; color:#475569;">If this wasn’t you, feel free to ignore this email.</p>
 </div>
 `
@@ -150,7 +151,7 @@ We received a request to delete your RainDate account.
 
 To confirm deletion, visit: ${deletionLink}
 Your deletion code: ${deletionCode}
-Prefer a code? Go to https://raindate.net/confirm-deletion and enter your code.
+Prefer a code? Go to ${frontendDomain}/confirm-deletion and enter your code.
 
 IMPORTANT: This link/code expires in ${expiresIn}. If you don't confirm in time, your account will remain active.
 
@@ -161,7 +162,7 @@ If you didn't request this deletion, please secure your account immediately by c
 	<h2 style="margin:0 0 8px; color:#dc2626;">⚠️ Account Deletion Request</h2>
 	<p style="margin:0 0 16px;">We received a request to permanently delete your RainDate account. This action cannot be undone.</p>
 	<a href="${deletionLink}" style="display:inline-block; padding:12px 20px; background-color:#dc2626; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm deletion</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm-deletion" style="color:#dc2626; text-decoration:underline;">https://raindate.net/confirm-deletion</a> and enter: <strong>${deletionCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="${frontendDomain}/confirm-deletion" style="color:#dc2626; text-decoration:underline;">${frontendDomain}/confirm-deletion</a> and enter: <strong>${deletionCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn't work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#dc2626;">${deletionLink}</p>
 	<div style="margin:8px 0 0; padding:12px; background-color:#fff7ed; border:1px solid #fed7aa; border-radius:8px; color:#9a3412;">
