@@ -60,7 +60,7 @@ const configurePassport = (passport: PassportStatic): void => {
 			}
 
 			logger.warn(`User not found during deserialization: ID ${id}`)
-			return done(new Error('User not found'), false) // User not found
+			return done(null, false) // User not found, return false to indicate failure
 		} catch (err) {
 			if (err instanceof Error) {
 				logger.error(`Error during deserialization: ${err.message}`, { error: err })
