@@ -12,10 +12,23 @@ import {
 	resetPassword,
 	updatePassword,
 	confirmDeletion,
-	requestUserDeletion
+	requestUserDeletion,
+	getUsers
 } from '../controllers/userController.js'
 
 const router = Router()
+
+/**
+ * @route GET /api/v1/users
+ * @description Get all users
+ * @access Private
+ * @returns {number} res.status - The status code of the HTTP response.
+ * @returns {Array} res.body - Array of user objects.
+*/
+router.get('/',
+	ensureAuthenticated,
+	getUsers
+)
 
 /**
  * @route POST /api/v1/users/register

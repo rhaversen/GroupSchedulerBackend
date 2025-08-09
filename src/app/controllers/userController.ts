@@ -161,6 +161,24 @@ export async function getUser (req: Request, res: Response, next: NextFunction):
 	}
 }
 
+export async function getUsers (req: Request, res: Response): Promise<void> {
+	logger.info('Getting all users')
+	try {
+		const users = await UserModel.find({}, null, { sort: { createdAt: -1 } }).exec()
+		const transformedUsers = await Promise.all(users.map(user => transformUser(user, false)))
+
+		logger.info(`Retrieved ${transformedUsers.length} users successfully`)
+		res.status(200).json(transformedUsers)
+	} catch (error) {
+		logger.error('Get users failed due to server error', { error })
+		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
+			res.status(400).json({ error: error.message })
+		} else {
+			res.status(500).json({ error: 'Internal server error' })
+		}
+	}
+}
+
 export async function getMe (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const user = req.user as IUser | undefined
 	if (user === undefined) {
