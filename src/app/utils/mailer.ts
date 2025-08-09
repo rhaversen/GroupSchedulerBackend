@@ -71,7 +71,7 @@ Welcome to RainDate! Let's get you set up.
 
 Please confirm your email by visiting: ${confirmationLink}
 Your confirmation code: ${confirmationCode}
-Prefer a code? Go to https://raindate.net/confirm and enter your code.
+Prefer a code? Go to https://raindate.net/confirm-email and enter your code.
 
 IMPORTANT: This link/code expires in ${expiresIn}. If you don't confirm in time, the unverified account will be deleted.
 
@@ -82,7 +82,7 @@ If you didn't request this, you can safely ignore this message.
 	<h2 style="margin:0 0 8px; color:#0f172a;">Welcome to RainDate 👋</h2>
 	<p style="margin:0 0 16px;">We’re excited to have you! Please confirm your email to finish setting up your account.</p>
 	<a href="${confirmationLink}" style="display:inline-block; padding:12px 20px; background-color:#2563eb; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm my email</a>
-	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm" style="color:#2563eb; text-decoration:underline;">https://raindate.net/confirm</a> and enter: <strong>${confirmationCode}</strong></p>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm-email" style="color:#2563eb; text-decoration:underline;">https://raindate.net/confirm-email</a> and enter: <strong>${confirmationCode}</strong></p>
 	<p style="margin:0 0 8px;">If the button doesn’t work, copy and paste this link:</p>
 	<p style="word-break: break-all; margin:0 0 16px; color:#1e40af;">${confirmationLink}</p>
 	<div style="margin:8px 0 0; padding:12px; background-color:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#991b1b;">

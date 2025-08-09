@@ -41,8 +41,8 @@ export async function transformUser (
 	}
 }
 
-function generateConfirmationLink (confirmationCode: string): string {
-	const confirmationLink = `${frontendDomain}/confirm?confirmationCode=${confirmationCode}`
+function generateEmailConfirmationLink (confirmationCode: string): string {
+	const confirmationLink = `${frontendDomain}/confirm-email?confirmationCode=${confirmationCode}`
 	logger.debug('Confirmation link generated:', { confirmationLink })
 	return confirmationLink
 }
@@ -53,7 +53,7 @@ function generatePasswordResetLink (passwordResetCode: string): string {
 	return passwordResetLink
 }
 
-function generateDeletionLink (deletionCode: string): string {
+function generateConfirmDeletionLink (deletionCode: string): string {
 	const deletionLink = `${frontendDomain}/confirm-deletion?deletionCode=${deletionCode}`
 	logger.debug('Deletion link generated:', { deletionLink })
 	return deletionLink
@@ -77,7 +77,7 @@ export async function requestConfirmationEmail (req: Request, res: Response, nex
 			} else {
 				const confirmationCode = await user.generateNewConfirmationCode()
 				await user.save()
-				const confirmationLink = generateConfirmationLink(confirmationCode)
+				const confirmationLink = generateEmailConfirmationLink(confirmationCode)
 				await sendConfirmationEmail(email, confirmationLink, confirmationCode)
 				logger.info(`Confirmation email re-sent to ${email}`)
 			}
@@ -131,7 +131,7 @@ export async function register (req: Request, res: Response, next: NextFunction)
 					await newUser.generateNewConfirmationCode()
 				}
 				const confirmationCode = newUser.confirmationCode as string
-				const confirmationLink = generateConfirmationLink(confirmationCode)
+				const confirmationLink = generateEmailConfirmationLink(confirmationCode)
 				await sendConfirmationEmail(newUser.email, confirmationLink, confirmationCode)
 				logger.info(`Sent confirmation email to ${newUser.email}`)
 			} catch (mailError) {
@@ -312,7 +312,7 @@ export async function requestUserDeletion (req: Request, res: Response, next: Ne
 		const deletionCode = await paramUser.generateNewDeletionCode()
 		await paramUser.save()
 
-		const deletionLink = generateDeletionLink(deletionCode)
+		const deletionLink = generateConfirmDeletionLink(deletionCode)
 		await sendUserDeletionConfirmationEmail(paramUser.email, deletionLink, deletionCode)
 
 		logger.info(`Deletion confirmation email sent for user: ID ${userId}`)

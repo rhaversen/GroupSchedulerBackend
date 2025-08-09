@@ -45,12 +45,12 @@ router.get('/:id',
 )
 
 /**
- * @route POST /api/v1/users/confirm
+ * @route POST /api/v1/users/confirm-email
  * @description Confirm a user's email using a confirmation code.
  * @access Public
  * @param {string} req.query.confirmationCode - The confirmation code.
  */
-router.post('/confirm',
+router.post('/confirm-email',
 	confirmUser
 )
 
@@ -65,22 +65,22 @@ router.delete('/confirm-deletion',
 )
 
 /**
- * @route POST /api/v1/users/request-confirmation
+ * @route POST /api/v1/users/request-email-confirmation
  * @description Request a new confirmation email to be sent if the account is not yet confirmed.
  * @access Public
  * @param {string} req.body.email - The email of the user requesting a new confirmation email.
  */
-router.post('/request-confirmation',
+router.post('/request-email-confirmation',
 	requestConfirmationEmail
 )
 
 /**
- * @route POST /api/v1/users/request-password-reset-email
+ * @route POST /api/v1/users/request-password-reset
  * @description Request a password reset email.
  * @access Public
  * @param {string} req.body.email - The email of the user requesting password reset.
  */
-router.post('/request-password-reset-email',
+router.post('/request-password-reset',
 	requestPasswordResetEmail
 )
 
