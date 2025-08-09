@@ -7,7 +7,7 @@ import {
 	updateUser,
 	getMe,
 	confirmUser,
-	requestConfirmationEmail,
+	requestEmailConfirmationEmail,
 	requestPasswordResetEmail,
 	resetPassword,
 	updatePassword,
@@ -71,7 +71,7 @@ router.delete('/confirm-deletion',
  * @param {string} req.body.email - The email of the user requesting a new confirmation email.
  */
 router.post('/request-email-confirmation',
-	requestConfirmationEmail
+	requestEmailConfirmationEmail
 )
 
 /**

@@ -83,7 +83,7 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 }
 
 // Function to send confirmation email
-export const sendConfirmationEmail = async (email: string, confirmationCode: string): Promise<void> => {
+export const sendEmailConfirmationEmail = async (email: string, confirmationCode: string): Promise<void> => {
 	const confirmationLink = generateEmailConfirmationLink(confirmationCode)
 	const expiresIn = formatDuration(verificationExpiry)
 	const subject = `Welcome! Please confirm your email (${expiresIn})`

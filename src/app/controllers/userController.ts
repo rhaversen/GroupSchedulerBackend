@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 
 import UserModel, { IUser, IUserFrontend } from '../models/User.js'
 import logger from '../utils/logger.js'
-import { sendConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail, sendUserDeletionConfirmationEmail } from '../utils/mailer.js'
+import { sendEmailConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail, sendUserDeletionConfirmationEmail } from '../utils/mailer.js'
 
 import { loginUserLocal } from './authController.js'
 
@@ -38,7 +38,7 @@ export async function transformUser (
 	}
 }
 
-export async function requestConfirmationEmail (req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requestEmailConfirmationEmail (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const { email } = req.body as { email?: string }
 
 	if (email === undefined || email === null || String(email).trim() === '') {
@@ -56,7 +56,7 @@ export async function requestConfirmationEmail (req: Request, res: Response, nex
 			} else {
 				const confirmationCode = await user.generateNewConfirmationCode()
 				await user.save()
-				await sendConfirmationEmail(email, confirmationCode)
+				await sendEmailConfirmationEmail(email, confirmationCode)
 				logger.info(`Confirmation email re-sent to ${email}`)
 			}
 		} else {
@@ -109,7 +109,7 @@ export async function register (req: Request, res: Response, next: NextFunction)
 					await newUser.generateNewConfirmationCode()
 				}
 				const confirmationCode = newUser.confirmationCode as string
-				await sendConfirmationEmail(newUser.email, confirmationCode)
+				await sendEmailConfirmationEmail(newUser.email, confirmationCode)
 				logger.info(`Sent confirmation email to ${newUser.email}`)
 			} catch (mailError) {
 				logger.error(`Failed to send confirmation email to ${newUser.email}`, { error: mailError })
