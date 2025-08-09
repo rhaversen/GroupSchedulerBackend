@@ -117,9 +117,6 @@ router.get('/me',
  * @access Private
  * @param {string} req.params.id - The ID of the user.
  * @param {string} [req.body.username] - The new username (optional).
- * @param {string} [req.body.email] - The new email (optional).
- * @param {string} [req.body.password] - The new password (optional).
- * @param {string} [req.body.confirmPassword] - The password confirmation (required if password provided).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated user object.
  */

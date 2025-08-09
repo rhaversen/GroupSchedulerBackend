@@ -241,11 +241,6 @@ export async function updateUser (req: Request, res: Response, next: NextFunctio
 			paramUser.username = req.body.username
 			updateApplied = true
 		}
-		if (req.body.email !== undefined && paramUser.email !== req.body.email) {
-			logger.debug(`Updating email for user ID ${userId}`)
-			paramUser.email = req.body.email
-			updateApplied = true
-		}
 
 		if (!updateApplied) {
 			logger.info(`Update user: No changes detected for user ID ${userId}`)
