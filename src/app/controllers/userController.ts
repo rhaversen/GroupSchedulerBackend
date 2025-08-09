@@ -4,11 +4,8 @@ import mongoose from 'mongoose'
 import UserModel, { IUser, IUserFrontend } from '../models/User.js'
 import logger from '../utils/logger.js'
 import { sendConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail, sendUserDeletionConfirmationEmail } from '../utils/mailer.js'
-import config from '../utils/setupConfig.js'
 
 import { loginUserLocal } from './authController.js'
-
-const { frontendDomain } = config
 
 export async function transformUser (
 	user: IUser,
@@ -41,24 +38,6 @@ export async function transformUser (
 	}
 }
 
-function generateEmailConfirmationLink (confirmationCode: string): string {
-	const confirmationLink = `${frontendDomain}/confirm-email?confirmationCode=${confirmationCode}`
-	logger.debug('Confirmation link generated:', { confirmationLink })
-	return confirmationLink
-}
-
-function generatePasswordResetLink (passwordResetCode: string): string {
-	const passwordResetLink = `${frontendDomain}/reset-password?passwordResetCode=${passwordResetCode}`
-	logger.debug('Password reset link generated:', { passwordResetLink })
-	return passwordResetLink
-}
-
-function generateConfirmDeletionLink (deletionCode: string): string {
-	const deletionLink = `${frontendDomain}/confirm-deletion?deletionCode=${deletionCode}`
-	logger.debug('Deletion link generated:', { deletionLink })
-	return deletionLink
-}
-
 export async function requestConfirmationEmail (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const { email } = req.body as { email?: string }
 
@@ -77,8 +56,7 @@ export async function requestConfirmationEmail (req: Request, res: Response, nex
 			} else {
 				const confirmationCode = await user.generateNewConfirmationCode()
 				await user.save()
-				const confirmationLink = generateEmailConfirmationLink(confirmationCode)
-				await sendConfirmationEmail(email, confirmationLink, confirmationCode)
+				await sendConfirmationEmail(email, confirmationCode)
 				logger.info(`Confirmation email re-sent to ${email}`)
 			}
 		} else {
@@ -131,8 +109,7 @@ export async function register (req: Request, res: Response, next: NextFunction)
 					await newUser.generateNewConfirmationCode()
 				}
 				const confirmationCode = newUser.confirmationCode as string
-				const confirmationLink = generateEmailConfirmationLink(confirmationCode)
-				await sendConfirmationEmail(newUser.email, confirmationLink, confirmationCode)
+				await sendConfirmationEmail(newUser.email, confirmationCode)
 				logger.info(`Sent confirmation email to ${newUser.email}`)
 			} catch (mailError) {
 				logger.error(`Failed to send confirmation email to ${newUser.email}`, { error: mailError })
@@ -312,8 +289,7 @@ export async function requestUserDeletion (req: Request, res: Response, next: Ne
 		const deletionCode = await paramUser.generateNewDeletionCode()
 		await paramUser.save()
 
-		const deletionLink = generateConfirmDeletionLink(deletionCode)
-		await sendUserDeletionConfirmationEmail(paramUser.email, deletionLink, deletionCode)
+		await sendUserDeletionConfirmationEmail(paramUser.email, deletionCode)
 
 		logger.info(`Deletion confirmation email sent for user: ID ${userId}`)
 		res.status(200).json({
@@ -374,8 +350,7 @@ export async function requestPasswordResetEmail (req: Request, res: Response, ne
 		if (user !== null) {
 			const passwordResetCode = await user.generateNewPasswordResetCode()
 			await user.save()
-			const passwordResetLink = generatePasswordResetLink(passwordResetCode)
-			await sendPasswordResetEmail(email, passwordResetLink, passwordResetCode)
+			await sendPasswordResetEmail(email, passwordResetCode)
 			logger.info(`Password reset email sent to ${email}`)
 		} else {
 			await sendEmailNotRegisteredEmail(email)

@@ -16,6 +16,25 @@ const {
 	frontendDomain
 } = config
 
+// Link generator functions
+function generateEmailConfirmationLink (confirmationCode: string): string {
+	const confirmationLink = `${frontendDomain}/confirm-email?confirmationCode=${confirmationCode}`
+	logger.debug('Confirmation link generated:', { confirmationLink })
+	return confirmationLink
+}
+
+function generatePasswordResetLink (passwordResetCode: string): string {
+	const passwordResetLink = `${frontendDomain}/reset-password?passwordResetCode=${passwordResetCode}`
+	logger.debug('Password reset link generated:', { passwordResetLink })
+	return passwordResetLink
+}
+
+function generateConfirmDeletionLink (deletionCode: string): string {
+	const deletionLink = `${frontendDomain}/confirm-deletion?deletionCode=${deletionCode}`
+	logger.debug('Deletion link generated:', { deletionLink })
+	return deletionLink
+}
+
 // Format milliseconds into a friendly duration string (e.g., 24 hours, 90 minutes)
 const formatDuration = (ms: number): string => {
 	const seconds = Math.floor(ms / 1000)
@@ -64,7 +83,8 @@ export const sendEmail = async (to: string, subject: string, text: string, html 
 }
 
 // Function to send confirmation email
-export const sendConfirmationEmail = async (email: string, confirmationLink: string, confirmationCode: string): Promise<void> => {
+export const sendConfirmationEmail = async (email: string, confirmationCode: string): Promise<void> => {
+	const confirmationLink = generateEmailConfirmationLink(confirmationCode)
 	const expiresIn = formatDuration(verificationExpiry)
 	const subject = `Welcome! Please confirm your email (${expiresIn})`
 	const text = `
@@ -96,7 +116,8 @@ If you didn't request this, you can safely ignore this message.
 }
 
 // Function to send password reset email
-export const sendPasswordResetEmail = async (email: string, passwordResetLink: string, passwordResetCode: string): Promise<void> => {
+export const sendPasswordResetEmail = async (email: string, passwordResetCode: string): Promise<void> => {
+	const passwordResetLink = generatePasswordResetLink(passwordResetCode)
 	const expiresIn = formatDuration(passwordResetExpiry)
 	const subject = 'Need a fresh start? Reset your password'
 	const text = `
@@ -143,7 +164,8 @@ export const sendEmailNotRegisteredEmail = async (email: string): Promise<void> 
 }
 
 // Function to send user deletion confirmation email
-export const sendUserDeletionConfirmationEmail = async (email: string, deletionLink: string, deletionCode: string): Promise<void> => {
+export const sendUserDeletionConfirmationEmail = async (email: string, deletionCode: string): Promise<void> => {
+	const deletionLink = generateConfirmDeletionLink(deletionCode)
 	const expiresIn = formatDuration(passwordResetExpiry)
 	const subject = 'Confirm account deletion'
 	const text = `
