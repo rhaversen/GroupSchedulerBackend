@@ -31,6 +31,7 @@ const router = Router()
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
  * @param {number} req.body.duration - Duration in milliseconds.
+ * @param {boolean} [req.body.public] - Whether the event is public (optional, defaults to false).
  * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
  * @param {Array<{start:number,end:number}>} [req.body.preferredTimes] - Preferred time ranges.
  * @returns {number} res.status - The status code of the HTTP response.
@@ -84,6 +85,7 @@ router.get('/:id',
  * @param {number} [req.body.duration] - Duration in milliseconds (optional).
  * @param {string} [req.body.status] - Event status ('draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled') (optional).
  * @param {number} [req.body.scheduledTime] - Scheduled time (Unix ms) (optional).
+ * @param {boolean} [req.body.public] - Whether the event is public (optional).
  * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
  * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
  * @returns {number} res.status - The status code of the HTTP response.

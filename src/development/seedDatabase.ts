@@ -71,6 +71,7 @@ await EventModel.create({
 	duration: 3 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 10 * day },
 	status: 'scheduling',
+	public: true,
 	blackoutPeriods: [
 		{ start: now + 2 * day + 18 * hour, end: now + 2 * day + 21 * hour }
 	],
@@ -92,6 +93,7 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 14 * day },
 	status: 'scheduled',
 	scheduledTime: now + 2 * day + 6 * hour,
+	public: false,
 	blackoutPeriods: [],
 	preferredTimes: []
 })
@@ -108,6 +110,7 @@ await EventModel.create({
 	duration: 90 * 60 * 1000,
 	timeWindow: { start: now + 3 * day, end: now + 8 * day },
 	status: 'draft',
+	public: false,
 	blackoutPeriods: [
 		{ start: now + 4 * day + 12 * hour, end: now + 4 * day + 14 * hour }
 	],
@@ -127,6 +130,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 5 * day },
 	status: 'scheduling',
+	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [
 		{ start: now + 2 * day + 18 * hour, end: now + 2 * day + 21 * hour }
@@ -145,6 +149,7 @@ await EventModel.create({
 	duration: 5 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 12 * day },
 	status: 'scheduling',
+	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
 	createdAt: new Date(now - 7 * day)

@@ -39,6 +39,9 @@ export interface IEvent extends Document {
 	/** The current scheduled time for the event, if any */
 	scheduledTime?: number
 
+	/** Whether the event is public and can be found by any user */
+	public: boolean
+
 	/** Blackout periods where the event cannot be scheduled */
 	blackoutPeriods: ITimeRange[]
 	/** Preferred times for the event */
@@ -66,6 +69,8 @@ export interface IEventFrontend {
 
 	status: 'draft' | 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
 	scheduledTime?: number
+
+	public: boolean
 
 	blackoutPeriods: ITimeRange[]
 	preferredTimes?: ITimeRange[]
@@ -176,6 +181,11 @@ const eventSchema = new Schema<IEvent>({
 		required: true,
 		enum: ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled'],
 		default: 'draft'
+	},
+	public: {
+		type: Schema.Types.Boolean,
+		required: true,
+		default: false
 	},
 	scheduledTime: {
 		type: Schema.Types.Number,

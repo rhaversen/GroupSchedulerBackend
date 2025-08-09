@@ -21,6 +21,7 @@ export async function transformEvent (
 			duration: event.duration,
 			status: event.status,
 			scheduledTime: event.scheduledTime,
+			public: event.public,
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
 			createdAt: event.createdAt,
@@ -42,6 +43,31 @@ function isEventAdmin (event: IEvent, userId: string): boolean {
 
 function isEventParticipant (event: IEvent, userId: string): boolean {
 	return event.participants.some(p => p.userId.toString() === userId)
+}
+
+function canAccessEvent (event: IEvent, userId?: string): boolean {
+	// If event is public and not a draft, anyone can access it
+	if (event.public && event.status !== 'draft') {
+		return true
+	}
+
+	// If no user ID provided, can't access private events
+	if (userId === undefined) {
+		return false
+	}
+
+	// For private events, user must be a participant
+	if (!isEventParticipant(event, userId)) {
+		return false
+	}
+
+	// For draft events, only admins and creators can access
+	if (event.status === 'draft') {
+		return isEventAdmin(event, userId) || isEventCreator(event, userId)
+	}
+
+	// For non-draft private events, any participant can access
+	return true
 }
 
 export async function createEvent (req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -105,8 +131,8 @@ export async function getEvent (req: Request, res: Response, next: NextFunction)
 		const user = req.user as IUser | undefined
 		const userId = user?.id
 
-		if (!isEventParticipant(event, userId ?? '') && userId !== undefined) {
-			logger.warn(`Get event failed: User ${userId} not authorized to view event ${eventId}`)
+		if (!canAccessEvent(event, userId)) {
+			logger.warn(`Get event failed: User ${userId ?? 'anonymous'} not authorized to view event ${eventId}`)
 			res.status(403).json({ error: 'Not authorized to view this event' })
 			return
 		}
@@ -165,7 +191,7 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		}
 
 		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'participants', 'timeWindow', 'duration', 'status', 'scheduledTime', 'blackoutPeriods', 'preferredTimes']
+		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'participants', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
 
 		for (const field of updatableFields) {
 			if (req.body[field] !== undefined) {
@@ -264,11 +290,14 @@ export async function getUserEvents (req: Request, res: Response, next: NextFunc
 			'participants.userId': user._id
 		}).sort({ 'timeWindow.start': 1 }).exec()
 
+		// Filter events based on access control
+		const accessibleEvents = events.filter(event => canAccessEvent(event, user.id))
+
 		const transformedEvents = await Promise.all(
-			events.map(event => transformEvent(event))
+			accessibleEvents.map(event => transformEvent(event))
 		)
 
-		logger.debug(`Retrieved ${events.length} events for user ${user.id}`)
+		logger.debug(`Retrieved ${accessibleEvents.length} events for user ${user.id}`)
 		res.status(200).json(transformedEvents)
 	} catch (error) {
 		logger.error('Get user events failed', { error })
