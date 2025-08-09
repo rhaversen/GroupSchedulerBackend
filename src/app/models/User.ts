@@ -30,10 +30,14 @@ export interface IUser extends Document {
 	expirationDate?: Date
 	/** Date when the password reset code will expire */
 	passwordResetExpirationDate?: Date
+	/** Date when the deletion code will expire */
+	deletionCodeExpirationDate?: Date
 	/** Code to confirm the user's email */
 	confirmationCode?: string
 	/** Code to reset the user's password */
 	passwordResetCode?: string
+	/** Code to confirm account deletion */
+	deletionCode?: string
 
 	// Methods
 	/** Compare the password with the hashed password */
@@ -46,6 +50,10 @@ export interface IUser extends Document {
 	generateNewConfirmationCode: () => Promise<string>
 	/** Generate a new password reset code */
 	generateNewPasswordResetCode: () => Promise<string>
+	/** Generate a new deletion code */
+	generateNewDeletionCode: () => Promise<string>
+	/** Confirm account deletion with code */
+	confirmDeletion: (deletionCode: string) => Promise<boolean>
 
 	// Timestamps
 	createdAt: Date
@@ -114,6 +122,12 @@ const userSchema = new Schema<IUser>({
 	},
 	passwordResetExpirationDate: {
 		type: Schema.Types.Date
+	},
+	deletionCode: {
+		type: Schema.Types.String
+	},
+	deletionCodeExpirationDate: {
+		type: Schema.Types.Date
 	}
 }, {
 	timestamps: true
@@ -127,7 +141,7 @@ userSchema.methods.confirmUser = function () {
 	this.confirmationCode = undefined // Unset the confirmation code
 }
 
-type CodeFields = 'confirmationCode' | 'passwordResetCode'
+type CodeFields = 'confirmationCode' | 'passwordResetCode' | 'deletionCode'
 
 async function generateUniqueCodeForField (field: CodeFields): Promise<string> {
 	let generatedCode: string
@@ -153,6 +167,25 @@ userSchema.methods.generateNewPasswordResetCode = async function (): Promise<str
 	this.passwordResetCode = newPasswordResetCode
 	this.passwordResetExpirationDate = new Date(Date.now() + passwordResetExpiry)
 	return newPasswordResetCode
+}
+
+userSchema.methods.generateNewDeletionCode = async function (): Promise<string> {
+	const newDeletionCode = await generateUniqueCodeForField('deletionCode')
+	this.deletionCode = newDeletionCode
+	this.deletionCodeExpirationDate = new Date(Date.now() + passwordResetExpiry)
+	return newDeletionCode
+}
+
+userSchema.methods.confirmDeletion = async function (deletionCode: string): Promise<boolean> {
+	const hasDeletionCode = this.deletionCode !== undefined
+	const isDeletionCodeValid = this.deletionCode === deletionCode
+	const isDeletionCodeExpired = this.deletionCodeExpirationDate !== undefined && new Date() >= this.deletionCodeExpirationDate
+
+	if (hasDeletionCode && isDeletionCodeValid && !isDeletionCodeExpired) {
+		await this.deleteOne()
+		return true
+	}
+	return false
 }
 
 userSchema.methods.resetPassword = async function (newPassword: string, passwordResetCode: string): Promise<void> {

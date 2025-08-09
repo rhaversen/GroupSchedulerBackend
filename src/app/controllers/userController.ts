@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 
 import UserModel, { IUser, IUserFrontend } from '../models/User.js'
 import logger from '../utils/logger.js'
-import { sendConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail } from '../utils/mailer.js'
+import { sendConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail, sendUserDeletionConfirmationEmail } from '../utils/mailer.js'
 import config from '../utils/setupConfig.js'
 
 import { loginUserLocal } from './authController.js'
@@ -51,6 +51,12 @@ function generatePasswordResetLink (passwordResetCode: string): string {
 	const passwordResetLink = `${frontendDomain}/reset-password?passwordResetCode=${passwordResetCode}`
 	logger.debug('Password reset link generated:', { passwordResetLink })
 	return passwordResetLink
+}
+
+function generateDeletionLink (deletionCode: string): string {
+	const deletionLink = `${frontendDomain}/confirm-deletion?deletionCode=${deletionCode}`
+	logger.debug('Deletion link generated:', { deletionLink })
+	return deletionLink
 }
 
 export async function requestConfirmationEmail (req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -276,21 +282,15 @@ export async function updateUser (req: Request, res: Response, next: NextFunctio
 	}
 }
 
-export async function deleteUser (req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function requestUserDeletion (req: Request, res: Response, next: NextFunction): Promise<void> {
 	const userId = req.params.id
-	logger.info(`Attempting to delete user: ID ${userId}`)
+	logger.info(`Attempting to request deletion for user: ID ${userId}`)
 
 	const user = req.user as IUser | undefined
 
 	if (user === undefined) {
-		logger.warn(`Delete user failed: Unauthorized request for ID ${userId}`)
+		logger.warn(`Delete user request failed: Unauthorized request for ID ${userId}`)
 		res.status(401).json({ error: 'Unauthorized' })
-		return
-	}
-
-	if (req.body?.confirm !== true) {
-		logger.warn(`User deletion failed: Confirmation not provided or invalid for ID ${userId}`)
-		res.status(400).json({ error: 'Confirmation required for deletion' })
 		return
 	}
 
@@ -298,27 +298,65 @@ export async function deleteUser (req: Request, res: Response, next: NextFunctio
 		const paramUser = await UserModel.findById(userId)
 
 		if (paramUser === null || paramUser === undefined) {
-			logger.warn(`Delete user failed: User not found. ID: ${userId}`)
+			logger.warn(`Delete user request failed: User not found. ID: ${userId}`)
 			res.status(404).json({ error: 'User not found' })
 			return
 		}
 
 		if (user.id !== paramUser.id) {
-			logger.warn(`Delete user failed: Forbidden access for user ${user.id} trying to delete ${userId}`)
+			logger.warn(`Delete user request failed: Forbidden access for user ${user.id} trying to delete ${userId}`)
 			res.status(403).json({ error: 'Forbidden' })
 			return
 		}
 
-		await paramUser.deleteOne()
-		logger.info(`User deleted successfully: ID ${userId}`)
-		res.status(204).send()
+		const deletionCode = await paramUser.generateNewDeletionCode()
+		await paramUser.save()
+
+		const deletionLink = generateDeletionLink(deletionCode)
+		await sendUserDeletionConfirmationEmail(paramUser.email, deletionLink, deletionCode)
+
+		logger.info(`Deletion confirmation email sent for user: ID ${userId}`)
+		res.status(200).json({
+			message: 'A deletion confirmation email has been sent. Please check your email and follow the instructions to confirm account deletion.'
+		})
 	} catch (error) {
-		logger.error(`User deletion failed: Error during deletion process for ID ${userId}`, { error })
+		logger.error(`Delete user request failed: Error during deletion process for ID ${userId}`, { error })
 		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
 			res.status(400).json({ error: error.message })
 		} else {
 			next(error)
 		}
+	}
+}
+
+export async function confirmDeletion (req: Request, res: Response, next: NextFunction): Promise<void> {
+	const { deletionCode } = req.query as { deletionCode?: string }
+
+	if (deletionCode === undefined || deletionCode === null || String(deletionCode).trim() === '') {
+		logger.warn('User deletion confirmation failed: Missing deletionCode')
+		res.status(400).json({ error: 'Deletion code missing' })
+		return
+	}
+
+	try {
+		const user = await UserModel.findOne({ deletionCode }).exec()
+		if (user === null || user === undefined) {
+			logger.warn('User deletion confirmation failed: Invalid or expired deletion code')
+			res.status(400).json({ error: 'Invalid or expired deletion code' })
+			return
+		}
+
+		const deletionConfirmed = await user.confirmDeletion(deletionCode)
+		if (deletionConfirmed) {
+			logger.info(`User account deleted successfully: ID ${user.id}`)
+			res.status(200).json({ message: 'Account deleted successfully' })
+		} else {
+			logger.warn('User deletion confirmation failed: Invalid or expired deletion code')
+			res.status(400).json({ error: 'Invalid or expired deletion code' })
+		}
+	} catch (error) {
+		logger.error('User deletion confirmation failed due to server error', { error })
+		next(error)
 	}
 }
 

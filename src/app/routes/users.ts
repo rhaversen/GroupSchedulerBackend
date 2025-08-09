@@ -2,7 +2,6 @@ import { Router } from 'express'
 
 import { ensureAuthenticated } from '../controllers/authController.js'
 import {
-	deleteUser,
 	getUser,
 	register,
 	updateUser,
@@ -11,7 +10,9 @@ import {
 	requestConfirmationEmail,
 	requestPasswordResetEmail,
 	resetPassword,
-	updatePassword
+	updatePassword,
+	confirmDeletion,
+	requestUserDeletion
 } from '../controllers/userController.js'
 
 const router = Router()
@@ -51,6 +52,16 @@ router.get('/:id',
  */
 router.post('/confirm',
 	confirmUser
+)
+
+/**
+ * @route DELETE /api/v1/users/confirm-deletion
+ * @description Confirm account deletion using a deletion code.
+ * @access Public
+ * @param {string} req.query.deletionCode - The deletion code.
+ */
+router.delete('/confirm-deletion',
+	confirmDeletion
 )
 
 /**
@@ -126,16 +137,16 @@ router.patch('/:id',
 )
 
 /**
- * @route DELETE /api/v1/users/:id
- * @description Delete user by ID.
+ * @route POST /api/v1/users/:id/request-deletion
+ * @description Request account deletion by sending a confirmation email with deletion code.
  * @access Private
  * @param {string} req.params.id - The ID of the user.
- * @param {boolean} req.body.confirm - Confirmation flag (must be true).
  * @returns {number} res.status - The status code of the HTTP response.
+ * @returns {Object} res.body - Success message indicating deletion email was sent.
  */
-router.delete('/:id',
+router.post('/:id/request-deletion',
 	ensureAuthenticated,
-	deleteUser
+	requestUserDeletion
 )
 
 export default router

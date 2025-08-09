@@ -140,3 +140,38 @@ export const sendEmailNotRegisteredEmail = async (email: string): Promise<void> 
 
 	await sendEmail(email, subject, text, html)
 }
+
+// Function to send user deletion confirmation email
+export const sendUserDeletionConfirmationEmail = async (email: string, deletionLink: string, deletionCode: string): Promise<void> => {
+	const expiresIn = formatDuration(passwordResetExpiry)
+	const subject = 'Confirm account deletion'
+	const text = `
+We received a request to delete your RainDate account.
+
+To confirm deletion, visit: ${deletionLink}
+Your deletion code: ${deletionCode}
+Prefer a code? Go to https://raindate.net/confirm-deletion and enter your code.
+
+IMPORTANT: This link/code expires in ${expiresIn}. If you don't confirm in time, your account will remain active.
+
+If you didn't request this deletion, please secure your account immediately by changing your password.
+`.trim()
+	const html = `
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color:#fef2f2; padding:24px; border-radius:12px; color:#0f172a;">
+	<h2 style="margin:0 0 8px; color:#dc2626;">⚠️ Account Deletion Request</h2>
+	<p style="margin:0 0 16px;">We received a request to permanently delete your RainDate account. This action cannot be undone.</p>
+	<a href="${deletionLink}" style="display:inline-block; padding:12px 20px; background-color:#dc2626; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">Confirm deletion</a>
+	<p style="margin:16px 0 8px;">Prefer a code? Go to <a href="https://raindate.net/confirm-deletion" style="color:#dc2626; text-decoration:underline;">https://raindate.net/confirm-deletion</a> and enter: <strong>${deletionCode}</strong></p>
+	<p style="margin:0 0 8px;">If the button doesn't work, copy and paste this link:</p>
+	<p style="word-break: break-all; margin:0 0 16px; color:#dc2626;">${deletionLink}</p>
+	<div style="margin:8px 0 0; padding:12px; background-color:#fff7ed; border:1px solid #fed7aa; border-radius:8px; color:#9a3412;">
+		<strong>Important:</strong> This link/code expires in ${expiresIn}. If you don't confirm in time, your account will remain active.
+	</div>
+	<div style="margin:8px 0 0; padding:12px; background-color:#fef2f2; border:1px solid #fecaca; border-radius:8px; color:#991b1b;">
+		<strong>Didn't request this?</strong> If you didn't ask to delete your account, please secure it immediately by changing your password.
+	</div>
+</div>
+`.trim()
+
+	await sendEmail(email, subject, text, html)
+}
