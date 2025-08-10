@@ -1,5 +1,5 @@
 import { type NextFunction, type Request, type Response } from 'express'
-import mongoose from 'mongoose'
+import mongoose, { FilterQuery } from 'mongoose'
 
 import EventModel, { IEvent, IEventFrontend } from '../models/Event.js'
 import { IUser } from '../models/User.js'
@@ -275,34 +275,86 @@ export async function deleteEvent (req: Request, res: Response, next: NextFuncti
 	}
 }
 
-export async function getUserEvents (req: Request, res: Response, next: NextFunction): Promise<void> {
-	logger.debug('Getting user events')
+interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; public?: boolean; status?: string[]; limit: number; offset: number }
+interface IGetEventsResponse { events: IEventFrontend[]; total: number }
+const VALID_STATUSES = ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled']
 
-	const user = req.user as IUser | undefined
-	if (user === undefined) {
-		logger.warn('Get user events failed: Unauthorized request')
-		res.status(401).json({ error: 'Unauthorized' })
-		return
-	}
-
+export async function getEvents (req: Request, res: Response, next: NextFunction): Promise<void> {
+	logger.debug('Getting events with query', { query: req.query })
 	try {
-		const events = await EventModel.find({
-			'participants.userId': user._id
-		}).sort({ 'timeWindow.start': 1 }).exec()
+		const {
+			createdBy,
+			adminOf,
+			participantOf,
+			memberOf,
+			public: publicFlag,
+			status,
+			limit,
+			offset
+		} = req.query as Record<string, string | string[]>
 
-		// Filter events based on access control
-		const accessibleEvents = events.filter(event => canAccessEvent(event, user.id))
+		const parseIds = (v: string | string[] | undefined) => (v != null) ? (Array.isArray(v) ? v : [v]) : undefined
+		const takeFirst = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
-		const transformedEvents = await Promise.all(
-			accessibleEvents.map(event => transformEvent(event))
-		)
+		const q: IGetEventsQuery = {
+			createdBy: takeFirst(createdBy),
+			adminOf: takeFirst(adminOf),
+			participantOf: takeFirst(participantOf),
+			memberOf: takeFirst(memberOf),
+			public: (() => { const v = takeFirst(publicFlag); if (v === 'true') { return true } if (v === 'false') { return false } return undefined })(),
+			status: (() => {
+				const raw = parseIds(status)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
+				const filtered = raw?.filter(s => VALID_STATUSES.includes(s))
+				return filtered && filtered.length ? filtered : undefined
+			})(),
+			limit: (() => { const v = takeFirst(limit); if (v == null) { return 50 } const n = parseInt(v, 10); if (isNaN(n) || n <= 0) { throw new Error('Invalid limit') } return Math.min(n, 200) })(),
+			offset: (() => { const v = takeFirst(offset); if (v == null) { return 0 } const n = parseInt(v, 10); if (isNaN(n) || n < 0) { throw new Error('Invalid offset') } return n })()
+		}
 
-		logger.debug(`Retrieved ${accessibleEvents.length} events for user ${user.id}`)
-		res.status(200).json(transformedEvents)
+		const viewerId = (req.user as IUser | undefined)?.id
+		const filter: FilterQuery<IEvent> = {}
+		const and: FilterQuery<IEvent>[] = []
+
+		if (q.public !== undefined) { and.push({ public: q.public }) }
+		if (q.status?.length != null) { and.push({ status: q.status.length === 1 ? q.status[0] : { $in: q.status } }) }
+
+		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ participants: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
+		if (q.createdBy != null) { and.push(roleMatch(q.createdBy, 'creator')) }
+		if (q.adminOf != null) { and.push(roleMatch(q.adminOf, 'admin')) }
+		if (q.participantOf != null) { and.push(roleMatch(q.participantOf, 'participant')) }
+		if (q.memberOf != null) { and.push({ 'participants.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
+
+		const visibility: FilterQuery<IEvent>[] = [{ public: true, status: { $ne: 'draft' } }]
+		if (viewerId != null) {
+			const vObj = new mongoose.Types.ObjectId(viewerId)
+			visibility.push(
+				{ status: 'draft', participants: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
+				{ public: false, status: { $ne: 'draft' }, 'participants.userId': vObj }
+			)
+		}
+		and.push({ $or: visibility })
+
+		const finalFilter = and.length ? { $and: and } : filter
+
+		const [events, total] = await Promise.all([
+			EventModel.find(finalFilter)
+				.sort({ updatedAt: -1, createdAt: -1 })
+				.limit(q.limit)
+				.skip(q.offset)
+				.exec(),
+			EventModel.countDocuments(finalFilter).exec()
+		])
+
+		const transformedEvents = await Promise.all(events.map(transformEvent))
+		const response: IGetEventsResponse = { events: transformedEvents, total }
+		logger.debug(`Retrieved ${events.length} events (${total} total)`)
+		res.status(200).json(response)
 	} catch (error) {
-		logger.error('Get user events failed', { error })
-		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
+		logger.error('Get events failed', { error })
+		if (error instanceof Error && error.message.toLowerCase().includes('invalid')) {
 			res.status(400).json({ error: error.message })
+		} else if (error instanceof mongoose.Error.CastError) {
+			res.status(400).json({ error: 'Invalid user ID format' })
 		} else {
 			next(error)
 		}

@@ -5,7 +5,7 @@ import {
 	createEvent,
 	deleteEvent,
 	getEvent,
-	getUserEvents,
+	getEvents,
 	updateEvent,
 	updateParticipantRole
 } from '../controllers/eventController.js'
@@ -43,15 +43,64 @@ router.post('/',
 )
 
 /**
- * @route GET /api/v1/events/user
- * @description Get all events for the current user.
- * @access Private
- * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Array} res.body - Array of event objects sorted by start time.
+ * @route GET /api/v1/events
+ * @description Fetch events with explicit filter parameters. All filters are optional. Multiple user-scoped filters MAY be supplied; when more than one is present they are combined with AND (intersection). If this is undesirable you may enforce "only one user filter" and return 400 otherwise.
+ * @access Public/Private
+ *
+ * Authorization rules:
+ *  - Draft events are only returned if the authenticated user is the event creator or an admin for that event.
+ *  - Non-public (public=false) events are only returned if the authenticated user is in the participants list (any role).
+ *
+ * Query Parameters:
+ *  - createdBy: string
+ *      Return events whose creator userId matches this value (creator role).
+ *
+ *  - adminOf: string
+ *      Return events where this userId appears in participants with role='admin'.
+ *
+ *  - participantOf: string
+ *      Return events where this userId appears in participants with role='participant' (excludes creator/admin).
+ *
+ *  - memberOf: string
+ *      Return events where this userId appears in participants with any role (creator | admin | participant).
+ *      (If provided together with createdBy/adminOf/participantOf, intersection semantics apply.)
+ *
+ *  - public: 'true' | 'false'
+ *      Filter by publicity flag.
+ *
+ *  - status: string | string[]
+ *      One or multiple event status values (draft | scheduling | scheduled | confirmed | cancelled).
+ *      Accept either repeated query parameters (?status=a&status=b) or a comma-separated list (?status=a,b).
+ *
+ *  - limit: number (default 50, max 200)
+ *  - offset: number (default 0)
+ *
+ * Sorting:
+ *  - Default: descending by updatedAt (or scheduledTime if you prefer). Define explicitly for consistency.
+ *
+ * Responses:
+ *  - 200: { events: EventType[]; total: number; }
+ *         total = total rows matching (before limit/offset).
+ *  - 400: Invalid query parameter combination / validation error.
+ *  - 401: If authentication required for requested private/draft data and user not authenticated.
+ *
+ * Notes:
+ *  - Apply authorization constraints before final pagination.
+ *  - If both public=true and a non-public-only user filter are given, intersection still applies (likely yielding only public events among that user set).
+ *  - For performance, build a compound query using indexes on (public, status), participants.userId, participants.role, createdBy.
+ *
+ * Example Requests
+	My managed events (creator or admin): choose either two filters or expose a convenience on frontend:
+	/api/v1/events?createdBy=ME
+	/api/v1/events?adminOf=ME (Frontend can merge results, or you can first call with memberOf=ME and filter roles client-side.)
+	Events I participate in (non-admin): /api/v1/events?participantOf=ME
+	Any events I am in: /api/v1/events?memberOf=ME
+	Public events: /api/v1/events?public=true&limit=20
+	Public scheduled events: /api/v1/events?public=true&status=scheduled
+	Multiple statuses: /api/v1/events?status=scheduled,confirmed
  */
-router.get('/user',
-	ensureAuthenticated,
-	getUserEvents
+router.get('/',
+	getEvents
 )
 
 /**
