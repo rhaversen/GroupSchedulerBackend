@@ -5,7 +5,7 @@ export interface ITimeRange {
 	end: number
 }
 
-export interface IParticipant {
+export interface IMember {
 	userId: Schema.Types.ObjectId
 	role: 'creator' | 'admin' | 'participant'
 	customPaddingAfter?: number
@@ -21,8 +21,8 @@ export interface IEvent extends Document {
 	/** Description of the event */
 	description: string
 
-	/** Event participants with their roles */
-	participants: IParticipant[]
+	/** Event members with their roles */
+	members: IMember[]
 
 	/** Amount of days the event lasts */
 	duration: number
@@ -56,7 +56,7 @@ export interface IEventFrontend {
 	name: string
 	description: string
 
-	participants: {
+	members: {
 		userId: string
 		role: 'creator' | 'admin' | 'participant'
 	}[]
@@ -100,7 +100,7 @@ const timeRangeSchema = new Schema<ITimeRange>({
 	}
 }, { _id: false })
 
-const participantSchema = new Schema<IParticipant>({
+const memberschema = new Schema<IMember>({
 	userId: {
 		type: Schema.Types.ObjectId,
 		ref: 'User',
@@ -138,12 +138,12 @@ const eventSchema = new Schema<IEvent>({
 		trim: true,
 		maxLength: [1000, 'Event description is too long (maximum 1000 characters)']
 	},
-	participants: {
-		type: [participantSchema],
+	members: {
+		type: [memberschema],
 		required: true,
 		validate: {
-			validator (participants: IParticipant[]) {
-				return participants.length > 0
+			validator (members: IMember[]) {
+				return members.length > 0
 			},
 			message: 'Event must have at least one participant'
 		}
@@ -208,13 +208,13 @@ const eventSchema = new Schema<IEvent>({
 	timestamps: true
 })
 
-eventSchema.index({ 'participants.userId': 1 })
+eventSchema.index({ 'members.userId': 1 })
 eventSchema.index({ status: 1 })
 eventSchema.index({ 'timeWindow.start': 1, 'timeWindow.end': 1 })
 eventSchema.index({ scheduledTime: 1 })
 
-eventSchema.path('participants').validate(
-	(participants: IParticipant[]) => participants.some(p => p.role === 'creator'),
+eventSchema.path('members').validate(
+	(members: IMember[]) => members.some(p => p.role === 'creator'),
 	'At least one participant must be a creator'
 )
 

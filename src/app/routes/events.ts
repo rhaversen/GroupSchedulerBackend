@@ -22,11 +22,11 @@ const router = Router()
  * @access Private
  * @param {string} req.body.name - The name of the event.
  * @param {string} req.body.description - The description of the event.
- * @param {Object[]} [req.body.participants] - Array of participant objects with userId, role, and settings (optional, defaults to creator).
- * @param {string} req.body.participants[].userId - User ID of the participant.
- * @param {string} req.body.participants[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.participants[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.participants[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
+ * @param {Object[]} [req.body.members] - Array of member objects with userId, role, and settings (optional, defaults to creator).
+ * @param {string} req.body.members[].userId - User ID of the participant.
+ * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
+ * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
+ * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
  * @param {Object} req.body.timeWindow - Time window for the event.
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
@@ -49,20 +49,20 @@ router.post('/',
  *
  * Authorization rules:
  *  - Draft events are only returned if the authenticated user is the event creator or an admin for that event.
- *  - Non-public (public=false) events are only returned if the authenticated user is in the participants list (any role).
+ *  - Non-public (public=false) events are only returned if the authenticated user is in the members list (any role).
  *
  * Query Parameters:
  *  - createdBy: string
  *      Return events whose creator userId matches this value (creator role).
  *
  *  - adminOf: string
- *      Return events where this userId appears in participants with role='admin'.
+ *      Return events where this userId appears in members with role='admin'.
  *
  *  - participantOf: string
- *      Return events where this userId appears in participants with role='participant' (excludes creator/admin).
+ *      Return events where this userId appears in members with role='participant' (excludes creator/admin).
  *
  *  - memberOf: string
- *      Return events where this userId appears in participants with any role (creator | admin | participant).
+ *      Return events where this userId appears in members with any role (creator | admin | participant).
  *      (If provided together with createdBy/adminOf/participantOf, intersection semantics apply.)
  *
  *  - public: 'true' | 'false'
@@ -87,7 +87,7 @@ router.post('/',
  * Notes:
  *  - Apply authorization constraints before final pagination.
  *  - If both public=true and a non-public-only user filter are given, intersection still applies (likely yielding only public events among that user set).
- *  - For performance, build a compound query using indexes on (public, status), participants.userId, participants.role, createdBy.
+ *  - For performance, build a compound query using indexes on (public, status), members.userId, members.role, createdBy.
  *
  * Example Requests
 	My managed events (creator or admin): choose either two filters or expose a convenience on frontend:
@@ -106,7 +106,7 @@ router.get('/',
 /**
  * @route GET /api/v1/events/:id
  * @description Get event by ID.
- * @access Private (participants only)
+ * @access Private (members only)
  * @param {string} req.params.id - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The event object.
@@ -123,11 +123,11 @@ router.get('/:id',
  * @param {string} req.params.id - The ID of the event.
  * @param {string} [req.body.name] - The new name (optional).
  * @param {string} [req.body.description] - The new description (optional).
- * @param {Object[]} [req.body.participants] - Array of participant objects with userId, role, and settings (optional).
- * @param {string} req.body.participants[].userId - User ID of the participant.
- * @param {string} req.body.participants[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.participants[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.participants[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
+ * @param {Object[]} [req.body.members] - Array of participant objects with userId, role, and settings (optional).
+ * @param {string} req.body.members[].userId - User ID of the participant.
+ * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
+ * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
+ * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
  * @param {Object} [req.body.timeWindow] - Time window for the event (optional).
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
@@ -160,7 +160,7 @@ router.delete('/:id',
 /**
  * @route PATCH /api/v1/events/:eventId/settings
  * @description Partially update user's settings for a specific event.
- * @access Private (participants only)
+ * @access Private (members only)
  * @param {string} req.params.eventId - The ID of the event.
  * @param {number} [req.body.customPaddingAfter] - Custom padding after event (optional).
  * @param {string} [req.body.availabilityStatus] - Availability status: 'available', 'unavailable', 'tentative' (optional).
@@ -175,7 +175,7 @@ router.patch('/:eventId/settings',
 /**
  * @route GET /api/v1/events/:eventId/settings
  * @description Get user's settings for a specific event.
- * @access Private (participants only)
+ * @access Private (members only)
  * @param {string} req.params.eventId - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The user event settings object.
@@ -186,7 +186,7 @@ router.get('/:eventId/settings',
 )
 
 /**
- * @route PATCH /api/v1/events/:id/participants/role
+ * @route PATCH /api/v1/events/:id/members/role
  * @description Update a participant's role in an event.
  * @access Private (admins and creators only)
  * @param {string} req.params.id - The ID of the event.
@@ -195,7 +195,7 @@ router.get('/:eventId/settings',
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated event object.
  */
-router.patch('/:id/participants/role',
+router.patch('/:id/members/role',
 	ensureAuthenticated,
 	updateParticipantRole
 )

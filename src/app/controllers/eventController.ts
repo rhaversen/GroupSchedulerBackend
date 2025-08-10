@@ -13,7 +13,7 @@ export async function transformEvent (
 			_id: event.id,
 			name: event.name,
 			description: event.description,
-			participants: event.participants.map(p => ({
+			members: event.members.map(p => ({
 				userId: p.userId.toString(),
 				role: p.role
 			})),
@@ -34,15 +34,15 @@ export async function transformEvent (
 }
 
 function isEventCreator (event: IEvent, userId: string): boolean {
-	return event.participants.some(p => p.userId.toString() === userId && p.role === 'creator')
+	return event.members.some(p => p.userId.toString() === userId && p.role === 'creator')
 }
 
 function isEventAdmin (event: IEvent, userId: string): boolean {
-	return event.participants.some(p => p.userId.toString() === userId && p.role === 'admin')
+	return event.members.some(p => p.userId.toString() === userId && p.role === 'admin')
 }
 
 function isEventParticipant (event: IEvent, userId: string): boolean {
-	return event.participants.some(p => p.userId.toString() === userId)
+	return event.members.some(p => p.userId.toString() === userId)
 }
 
 function canAccessEvent (event: IEvent, userId?: string): boolean {
@@ -83,7 +83,7 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 	const {
 		name,
 		description,
-		participants,
+		members,
 		timeWindow,
 		duration,
 		blackoutPeriods,
@@ -94,7 +94,7 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		const eventData: Partial<IEvent> = {
 			name,
 			description,
-			participants: participants ?? [{ userId: user._id, role: 'creator', availabilityStatus: 'available' }],
+			members: members ?? [{ userId: user._id, role: 'creator', availabilityStatus: 'available' }],
 			timeWindow,
 			duration,
 			blackoutPeriods: blackoutPeriods ?? [],
@@ -191,7 +191,7 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		}
 
 		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'participants', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
+		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
 
 		for (const field of updatableFields) {
 			if (req.body[field] !== undefined) {
@@ -318,18 +318,18 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		if (q.public !== undefined) { and.push({ public: q.public }) }
 		if (q.status?.length != null) { and.push({ status: q.status.length === 1 ? q.status[0] : { $in: q.status } }) }
 
-		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ participants: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
+		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ members: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
 		if (q.createdBy != null) { and.push(roleMatch(q.createdBy, 'creator')) }
 		if (q.adminOf != null) { and.push(roleMatch(q.adminOf, 'admin')) }
 		if (q.participantOf != null) { and.push(roleMatch(q.participantOf, 'participant')) }
-		if (q.memberOf != null) { and.push({ 'participants.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
+		if (q.memberOf != null) { and.push({ 'members.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
 
 		const visibility: FilterQuery<IEvent>[] = [{ public: true, status: { $ne: 'draft' } }]
 		if (viewerId != null) {
 			const vObj = new mongoose.Types.ObjectId(viewerId)
 			visibility.push(
-				{ status: 'draft', participants: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
-				{ public: false, status: { $ne: 'draft' }, 'participants.userId': vObj }
+				{ status: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
+				{ public: false, status: { $ne: 'draft' }, 'members.userId': vObj }
 			)
 		}
 		and.push({ $or: visibility })
@@ -397,8 +397,8 @@ export async function updateParticipantRole (req: Request, res: Response, next: 
 			return
 		}
 
-		const participantIndex = event.participants.findIndex(p => p.userId.toString() === userId)
-		if (participantIndex === -1) {
+		const memberIndex = event.members.findIndex(p => p.userId.toString() === userId)
+		if (memberIndex === -1) {
 			logger.warn(`Update participant role failed: User ${userId} not found in event ${eventId}`)
 			res.status(404).json({ error: 'Participant not found in event' })
 			await session.abortTransaction()
@@ -406,7 +406,7 @@ export async function updateParticipantRole (req: Request, res: Response, next: 
 			return
 		}
 
-		const targetParticipant = event.participants[participantIndex]
+		const targetParticipant = event.members[memberIndex]
 
 		// Only creators can modify creator roles
 		if ((newRole === 'creator' || targetParticipant.role === 'creator') && !userIsCreator) {
@@ -417,7 +417,7 @@ export async function updateParticipantRole (req: Request, res: Response, next: 
 			return
 		}
 
-		event.participants[participantIndex].role = newRole
+		event.members[memberIndex].role = newRole
 		await event.validate()
 		await event.save({ session })
 		await session.commitTransaction()

@@ -1,7 +1,7 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import mongoose from 'mongoose'
 
-import EventModel, { IParticipant } from '../models/Event.js'
+import EventModel, { IMember } from '../models/Event.js'
 import { IUser } from '../models/User.js'
 import logger from '../utils/logger.js'
 
@@ -13,7 +13,7 @@ export interface IUserEventSettingsFrontend {
 }
 
 export async function transformUserEventSettings (
-	participant: IParticipant,
+	participant: IMember,
 	eventId: string
 ): Promise<IUserEventSettingsFrontend> {
 	try {
@@ -55,8 +55,8 @@ export async function updateUserEventSettings (req: Request, res: Response, next
 			return
 		}
 
-		const participantIndex = event.participants.findIndex(p => p.userId.toString() === user._id.toString())
-		if (participantIndex === -1) {
+		const memberIndex = event.members.findIndex(p => p.userId.toString() === user._id.toString())
+		if (memberIndex === -1) {
 			logger.warn(`Update user event settings failed: User ${user.id} not participant in event ${eventId}`)
 			res.status(403).json({ error: 'Not a participant in this event' })
 			await session.abortTransaction()
@@ -67,20 +67,20 @@ export async function updateUserEventSettings (req: Request, res: Response, next
 		let updateApplied = false
 
 		if (customPaddingAfter !== undefined) {
-			event.participants[participantIndex].customPaddingAfter = customPaddingAfter
+			event.members[memberIndex].customPaddingAfter = customPaddingAfter
 			updateApplied = true
 			logger.debug(`Updating customPaddingAfter for user ${user.id} in event ${eventId}`)
 		}
 
 		if (availabilityStatus !== undefined) {
-			event.participants[participantIndex].availabilityStatus = availabilityStatus
+			event.members[memberIndex].availabilityStatus = availabilityStatus
 			updateApplied = true
 			logger.debug(`Updating availabilityStatus for user ${user.id} in event ${eventId}`)
 		}
 
 		if (!updateApplied) {
 			logger.info(`Update user event settings: No changes detected for user ${user.id} in event ${eventId}`)
-			const transformedSettings = await transformUserEventSettings(event.participants[participantIndex], eventId)
+			const transformedSettings = await transformUserEventSettings(event.members[memberIndex], eventId)
 			res.status(200).json(transformedSettings)
 			await session.commitTransaction()
 			await session.endSession()
@@ -91,7 +91,7 @@ export async function updateUserEventSettings (req: Request, res: Response, next
 		await event.save({ session })
 		await session.commitTransaction()
 
-		const transformedSettings = await transformUserEventSettings(event.participants[participantIndex], eventId)
+		const transformedSettings = await transformUserEventSettings(event.members[memberIndex], eventId)
 		logger.info(`User event settings updated successfully for user ${user.id} in event ${eventId}`)
 		res.status(200).json(transformedSettings)
 	} catch (error) {
@@ -126,13 +126,13 @@ export async function getUserEventSettings (req: Request, res: Response, next: N
 			return
 		}
 
-		if (event.participants.some(p => p.userId.toString() === user._id.toString()) !== true) {
+		if (event.members.some(p => p.userId.toString() === user._id.toString()) !== true) {
 			logger.warn(`Get user event settings failed: User ${user.id} not participant in event ${eventId}`)
 			res.status(403).json({ error: 'Not a participant in this event' })
 			return
 		}
 
-		const participant = event.participants.find(p => p.userId.toString() === user._id.toString())
+		const participant = event.members.find(p => p.userId.toString() === user._id.toString())
 		if (participant === undefined) {
 			logger.debug(`No participant found for user ${user.id} in event ${eventId}`)
 			res.status(404).json({ error: 'User event settings not found' })

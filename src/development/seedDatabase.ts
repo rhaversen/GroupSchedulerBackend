@@ -62,7 +62,7 @@ await userFrank.save()
 await EventModel.create({
 	name: 'Board Game Night',
 	description: 'Casual board games with friends',
-	participants: [
+	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userAlice._id, role: 'participant', availabilityStatus: 'tentative' },
 		{ userId: userBob._id, role: 'participant', availabilityStatus: 'available' },
@@ -83,7 +83,7 @@ await EventModel.create({
 await EventModel.create({
 	name: 'Birthday Bash',
 	description: 'Surprise party with cake and music',
-	participants: [
+	members: [
 		{ userId: userAlice._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userTest._id, role: 'admin', availabilityStatus: 'available' },
 		{ userId: userDana._id, role: 'participant', availabilityStatus: 'tentative' },
@@ -101,7 +101,7 @@ await EventModel.create({
 await EventModel.create({
 	name: 'Picnic in the Park',
 	description: 'Bring snacks and frisbees',
-	participants: [
+	members: [
 		{ userId: userBob._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userTest._id, role: 'participant', availabilityStatus: 'tentative' },
 		{ userId: userFrank._id, role: 'participant', availabilityStatus: 'available' },
@@ -122,7 +122,7 @@ await EventModel.create({
 await EventModel.create({
 	name: 'Potluck Dinner',
 	description: 'Everyone brings a dish',
-	participants: [
+	members: [
 		{ userId: userDana._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userEve._id, role: 'participant', availabilityStatus: 'tentative' },
 		{ userId: userCharlie._id, role: 'participant', availabilityStatus: 'available' }
@@ -141,7 +141,7 @@ await EventModel.create({
 await EventModel.create({
 	name: 'Weekend Hike',
 	description: 'Early morning trail hike',
-	participants: [
+	members: [
 		{ userId: userFrank._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userBob._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userAlice._id, role: 'participant', availabilityStatus: 'tentative' }
