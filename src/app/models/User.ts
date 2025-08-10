@@ -5,6 +5,8 @@ import validator from 'validator'
 
 import config from '../utils/setupConfig.js'
 
+import { ITimeRange } from './Event.js'
+
 const {
 	bcryptSaltRounds,
 	verificationExpiry,
@@ -39,6 +41,9 @@ export interface IUser extends Document {
 	/** Code to confirm account deletion */
 	deletionCode?: string
 
+	/** User's blackout periods when they are unavailable */
+	blackoutPeriods: ITimeRange[]
+
 	// Methods
 	/** Compare the password with the hashed password */
 	comparePassword: (password: string) => Promise<boolean>
@@ -71,11 +76,34 @@ export interface IUserFrontend {
 	expirationDate: Date | null
 	/** If the user has confirmed their email, null if not the current user */
 	confirmed: boolean | null
+	/** User's blackout periods, null if not the current user */
+	blackoutPeriods: ITimeRange[] | null
 	/** Created at timestamp */
 	createdAt: Date
 	/** Updated at timestamp */
 	updatedAt: Date
 }
+
+const timeRangeSchema = new Schema<ITimeRange>({
+	start: {
+		type: Schema.Types.Number,
+		required: true,
+		validate: {
+			validator: (v: number) => v > 0,
+			message: 'Start time must be a positive number'
+		}
+	},
+	end: {
+		type: Schema.Types.Number,
+		required: true,
+		validate: {
+			validator: function (this: ITimeRange, v: number) {
+				return v > this.start
+			},
+			message: 'End time must be after start time'
+		}
+	}
+}, { _id: false })
 
 const userSchema = new Schema<IUser>({
 	username: {
@@ -128,7 +156,8 @@ const userSchema = new Schema<IUser>({
 	},
 	deletionCodeExpirationDate: {
 		type: Schema.Types.Date
-	}
+	},
+	blackoutPeriods: [timeRangeSchema]
 }, {
 	timestamps: true
 })

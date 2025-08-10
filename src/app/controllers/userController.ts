@@ -1,6 +1,7 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import mongoose from 'mongoose'
 
+import { ITimeRange } from '../models/Event.js'
 import UserModel, { IUser, IUserFrontend } from '../models/User.js'
 import logger from '../utils/logger.js'
 import { sendEmailConfirmationEmail, sendEmailNotRegisteredEmail, sendPasswordResetEmail, sendUserDeletionConfirmationEmail } from '../utils/mailer.js'
@@ -24,13 +25,15 @@ export async function transformUser (
 				...baseUser,
 				email: user.email,
 				expirationDate: user.expirationDate ?? null,
-				confirmed: user.confirmed
+				confirmed: user.confirmed,
+				blackoutPeriods: user.blackoutPeriods
 			}
 			: {
 				...baseUser,
 				email: null,
 				expirationDate: null,
-				confirmed: null
+				confirmed: null,
+				blackoutPeriods: null
 			}
 	} catch (error) {
 		logger.error(`Error transforming user ID ${user.id}`, { error })
@@ -511,3 +514,223 @@ export async function updatePassword (req: Request, res: Response, next: NextFun
 		next(error)
 	}
 }
+
+// Helper Functions for Blackout Period Management
+
+/**
+ * Merge overlapping and adjacent blackout periods
+ * @param periods Array of time ranges to merge
+ * @returns Sorted array of merged, non-overlapping time ranges
+ */
+function mergeBlackoutPeriods (periods: ITimeRange[]): ITimeRange[] {
+	if (periods.length <= 1) {
+		return periods
+	}
+
+	// Sort periods by start time
+	const sorted = periods.slice().sort((a, b) => a.start - b.start)
+	const merged: ITimeRange[] = []
+
+	for (const current of sorted) {
+		if (merged.length === 0) {
+			merged.push(current)
+		} else {
+			const last = merged[merged.length - 1]
+
+			// Check if current period overlaps or is adjacent to the last merged period
+			if (current.start <= last.end) {
+				// Merge by extending the end time if necessary
+				last.end = Math.max(last.end, current.end)
+			} else {
+				// No overlap, add as new period
+				merged.push(current)
+			}
+		}
+	}
+
+	return merged
+}
+
+/**
+ * Add a new blackout period and merge with existing ones if necessary
+ * @param existingPeriods Current blackout periods
+ * @param newPeriod New period to add
+ * @returns Merged array of blackout periods
+ */
+function addAndMergeBlackoutPeriod (existingPeriods: ITimeRange[], newPeriod: ITimeRange): ITimeRange[] {
+	const allPeriods = [...existingPeriods, newPeriod]
+	return mergeBlackoutPeriods(allPeriods)
+}
+
+/**
+ * Remove a time range from blackout periods, splitting periods if necessary
+ * @param existingPeriods Current blackout periods
+ * @param deleteRange Range to remove
+ * @returns Updated array of blackout periods with range removed
+ */
+function removeFromBlackoutPeriods (existingPeriods: ITimeRange[], deleteRange: ITimeRange): ITimeRange[] {
+	const result: ITimeRange[] = []
+
+	for (const period of existingPeriods) {
+		// Check if there's any overlap
+		if (deleteRange.end <= period.start || deleteRange.start >= period.end) {
+			// No overlap, keep the period as is
+			result.push(period)
+		} else {
+			// There is overlap, handle different cases
+
+			if (deleteRange.start <= period.start && deleteRange.end >= period.end) {
+				// Case 1: Deletion range completely contains the period
+				// Period is completely removed, don't add anything
+				continue
+			}
+
+			if (deleteRange.start > period.start && deleteRange.end < period.end) {
+				// Case 2: Deletion range is completely within the period (split into two)
+				// Split into two periods
+				result.push({ start: period.start, end: deleteRange.start })
+				result.push({ start: deleteRange.end, end: period.end })
+			} else if (deleteRange.start <= period.start && deleteRange.end < period.end) {
+				// Case 3: Deletion range overlaps the beginning of the period
+				// Keep the part after the deletion
+				result.push({ start: deleteRange.end, end: period.end })
+			} else if (deleteRange.start > period.start && deleteRange.end >= period.end) {
+				// Case 4: Deletion range overlaps the end of the period
+				// Keep the part before the deletion
+				result.push({ start: period.start, end: deleteRange.start })
+			}
+		}
+	}
+
+	return result
+}
+
+export async function addUserBlackoutPeriod (req: Request, res: Response, next: NextFunction): Promise<void> {
+	const userId = req.params.id
+	const user = req.user as IUser | undefined
+	const { start, end } = req.body as { start?: number, end?: number }
+
+	if (user === undefined) {
+		logger.warn(`Add user blackout period failed: Unauthorized request for ID ${userId}`)
+		res.status(401).json({ error: 'Unauthorized' })
+		return
+	}
+
+	if (user.id !== userId) {
+		logger.warn(`Add user blackout period failed: Forbidden access for user ${user.id} trying to access ${userId}`)
+		res.status(403).json({ error: 'Forbidden' })
+		return
+	}
+
+	if (start === undefined || end === undefined || typeof start !== 'number' || typeof end !== 'number') {
+		logger.warn(`Add user blackout period failed: Invalid input types for user ${userId}`)
+		res.status(400).json({ error: 'start and end times are required and must be numbers' })
+		return
+	}
+
+	const session = await mongoose.startSession()
+	session.startTransaction()
+
+	try {
+		const fullUser = await UserModel.findById(userId, null, { session })
+
+		if (fullUser === null || fullUser === undefined) {
+			logger.warn(`Add user blackout period failed: User not found. ID: ${userId}`)
+			res.status(404).json({ error: 'User not found' })
+			await session.abortTransaction()
+			await session.endSession()
+			return
+		}
+
+		const newBlackoutPeriod: ITimeRange = { start, end }
+
+		// Merge the new period with existing periods
+		fullUser.blackoutPeriods = addAndMergeBlackoutPeriod(fullUser.blackoutPeriods, newBlackoutPeriod)
+
+		await fullUser.validate()
+		await fullUser.save({ session })
+		await session.commitTransaction()
+
+		logger.info(`Added and merged blackout period (${start}-${end}) for user: ID ${userId}. Total periods: ${fullUser.blackoutPeriods.length}`)
+		res.status(201).json(fullUser.blackoutPeriods)
+	} catch (error) {
+		await session.abortTransaction()
+		logger.error(`Add user blackout period failed: Error adding blackout period for user ID ${userId}`, { error })
+		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
+			res.status(400).json({ error: error.message })
+		} else {
+			next(error)
+		}
+	} finally {
+		await session.endSession()
+	}
+}
+
+export async function deleteUserBlackoutPeriod (req: Request, res: Response, next: NextFunction): Promise<void> {
+	const userId = req.params.id
+	const user = req.user as IUser | undefined
+	const { start, end } = req.body as { start?: number, end?: number }
+
+	if (user === undefined) {
+		logger.warn(`Delete user blackout period failed: Unauthorized request for ID ${userId}`)
+		res.status(401).json({ error: 'Unauthorized' })
+		return
+	}
+
+	if (user.id !== userId) {
+		logger.warn(`Delete user blackout period failed: Forbidden access for user ${user.id} trying to access ${userId}`)
+		res.status(403).json({ error: 'Forbidden' })
+		return
+	}
+
+	if (start === undefined || end === undefined || typeof start !== 'number' || typeof end !== 'number') {
+		logger.warn(`Delete user blackout period failed: Invalid input types for user ${userId}`)
+		res.status(400).json({ error: 'start and end times are required and must be numbers' })
+		return
+	}
+
+	const session = await mongoose.startSession()
+	session.startTransaction()
+
+	try {
+		const fullUser = await UserModel.findById(userId, null, { session })
+
+		if (fullUser === null || fullUser === undefined) {
+			logger.warn(`Delete user blackout period failed: User not found. ID: ${userId}`)
+			res.status(404).json({ error: 'User not found' })
+			await session.abortTransaction()
+			await session.endSession()
+			return
+		}
+
+		const originalPeriods = fullUser.blackoutPeriods.slice()
+		const deleteRange: ITimeRange = { start, end }
+
+		// Remove the range from blackout periods, splitting if necessary
+		fullUser.blackoutPeriods = removeFromBlackoutPeriods(fullUser.blackoutPeriods, deleteRange)
+
+		const hasChanges = JSON.stringify(originalPeriods) !== JSON.stringify(fullUser.blackoutPeriods)
+
+		if (hasChanges) {
+			await fullUser.save({ session })
+			await session.commitTransaction()
+
+			logger.info(`Modified blackout periods by removing time range ${start}-${end} for user: ID ${userId}. Total periods: ${fullUser.blackoutPeriods.length}`)
+			res.status(200).json(fullUser.blackoutPeriods)
+		} else {
+			await session.commitTransaction()
+			res.status(200).json(fullUser.blackoutPeriods)
+		}
+	} catch (error) {
+		await session.abortTransaction()
+		logger.error(`Delete user blackout period failed: Error deleting blackout period for user ID ${userId}`, { error })
+		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
+			res.status(400).json({ error: error.message })
+		} else {
+			next(error)
+		}
+	} finally {
+		await session.endSession()
+	}
+}
+

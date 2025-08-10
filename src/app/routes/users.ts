@@ -13,7 +13,9 @@ import {
 	updatePassword,
 	confirmDeletion,
 	requestUserDeletion,
-	getUsers
+	getUsers,
+	addUserBlackoutPeriod,
+	deleteUserBlackoutPeriod
 } from '../controllers/userController.js'
 
 const router = Router()
@@ -160,6 +162,36 @@ router.patch('/:id',
 router.post('/:id/request-deletion',
 	ensureAuthenticated,
 	requestUserDeletion
+)
+
+/**
+ * @route POST /api/v1/users/:id/blackout-periods
+ * @description Add a new blackout period for the user.
+ * @access Private (own user only)
+ * @param {string} req.params.id - The ID of the user.
+ * @param {number} req.body.start - Start time (Unix ms).
+ * @param {number} req.body.end - End time (Unix ms).
+ * @returns {number} res.status - The status code of the HTTP response.
+ * @returns {Array<{start:number,end:number}>} res.body - Updated array of blackout periods.
+ */
+router.post('/:id/blackout-periods',
+	ensureAuthenticated,
+	addUserBlackoutPeriod
+)
+
+/**
+ * @route DELETE /api/v1/users/:id/blackout-periods
+ * @description Delete blackout periods that overlap with the specified time range.
+ * @access Private (own user only)
+ * @param {string} req.params.id - The ID of the user.
+ * @param {number} req.body.start - Start time (Unix ms).
+ * @param {number} req.body.end - End time (Unix ms).
+ * @returns {number} res.status - The status code of the HTTP response.
+ * @returns {Array<{start:number,end:number}>} res.body - Updated array of blackout periods.
+ */
+router.delete('/:id/blackout-periods',
+	ensureAuthenticated,
+	deleteUserBlackoutPeriod
 )
 
 export default router
