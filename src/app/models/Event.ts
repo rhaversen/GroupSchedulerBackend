@@ -100,7 +100,7 @@ const timeRangeSchema = new Schema<ITimeRange>({
 	}
 }, { _id: false })
 
-const memberschema = new Schema<IMember>({
+const memberSchema = new Schema<IMember>({
 	userId: {
 		type: Schema.Types.ObjectId,
 		ref: 'User',
@@ -139,7 +139,7 @@ const eventSchema = new Schema<IEvent>({
 		maxLength: [1000, 'Event description is too long (maximum 1000 characters)']
 	},
 	members: {
-		type: [memberschema],
+		type: [memberSchema],
 		required: true,
 		validate: {
 			validator (members: IMember[]) {
