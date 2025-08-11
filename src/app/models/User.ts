@@ -233,6 +233,11 @@ userSchema.methods.comparePassword = async function (this: IUser, password: stri
 	return isPasswordCorrect
 }
 
+userSchema.path('email').validate(async function (this: IUser, value: string) {
+	const existing = await UserModel.findOne({ email: value, _id: { $ne: this._id } }).lean()
+	return existing == null
+}, 'Email already in use')
+
 userSchema.pre('save', async function (next) {
 	if (this.isNew && (this.confirmationCode == null)) {
 		await this.generateNewConfirmationCode()
