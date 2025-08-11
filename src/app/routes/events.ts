@@ -106,13 +106,12 @@ router.get('/',
 /**
  * @route GET /api/v1/events/:id
  * @description Get event by ID.
- * @access Private (members only)
+ * @access Public (limited info) / Private (full info for members)
  * @param {string} req.params.id - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The event object.
  */
 router.get('/:id',
-	ensureAuthenticated,
 	getEvent
 )
 
