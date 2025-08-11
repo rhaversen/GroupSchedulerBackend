@@ -220,7 +220,7 @@ userSchema.methods.confirmDeletion = async function (deletionCode: string): Prom
 userSchema.methods.resetPassword = async function (newPassword: string, passwordResetCode: string): Promise<void> {
 	const hasPasswordResetCode = this.passwordResetCode !== undefined
 	const isPasswordResetCodeValid = this.passwordResetCode === passwordResetCode
-	const isPasswordResetCodeExpired = new Date() >= this.passwordResetExpirationDate
+	const isPasswordResetCodeExpired = this.passwordResetExpirationDate !== undefined && new Date() >= this.passwordResetExpirationDate
 	if (hasPasswordResetCode && isPasswordResetCodeValid && !isPasswordResetCodeExpired) {
 		this.password = newPassword
 		this.passwordResetCode = undefined
@@ -232,6 +232,11 @@ userSchema.methods.comparePassword = async function (this: IUser, password: stri
 	const isPasswordCorrect = await compare(password, this.password)
 	return isPasswordCorrect
 }
+
+userSchema.path('email').validate(async function (this: IUser, value: string) {
+	const existing = await UserModel.findOne({ email: value, _id: { $ne: this._id } }).lean()
+	return existing == null
+}, 'Email already in use')
 
 userSchema.pre('save', async function (next) {
 	if (this.isNew && (this.confirmationCode == null)) {
