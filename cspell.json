@@ -23,6 +23,8 @@
         "logtail",
         "readyz",
         "livez",
-        "deepcode"
+        "deepcode",
+        "KHTML",
+        "Segoe"
     ]
 }

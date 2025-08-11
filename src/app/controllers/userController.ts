@@ -522,7 +522,7 @@ export async function updatePassword (req: Request, res: Response, next: NextFun
  * @param periods Array of time ranges to merge
  * @returns Sorted array of merged, non-overlapping time ranges
  */
-function mergeBlackoutPeriods (periods: ITimeRange[]): ITimeRange[] {
+export function mergeBlackoutPeriods (periods: ITimeRange[]): ITimeRange[] {
 	if (periods.length <= 1) {
 		return periods
 	}
@@ -557,7 +557,7 @@ function mergeBlackoutPeriods (periods: ITimeRange[]): ITimeRange[] {
  * @param newPeriod New period to add
  * @returns Merged array of blackout periods
  */
-function addAndMergeBlackoutPeriod (existingPeriods: ITimeRange[], newPeriod: ITimeRange): ITimeRange[] {
+export function addAndMergeBlackoutPeriod (existingPeriods: ITimeRange[], newPeriod: ITimeRange): ITimeRange[] {
 	const allPeriods = [...existingPeriods, newPeriod]
 	return mergeBlackoutPeriods(allPeriods)
 }
@@ -568,7 +568,7 @@ function addAndMergeBlackoutPeriod (existingPeriods: ITimeRange[], newPeriod: IT
  * @param deleteRange Range to remove
  * @returns Updated array of blackout periods with range removed
  */
-function removeFromBlackoutPeriods (existingPeriods: ITimeRange[], deleteRange: ITimeRange): ITimeRange[] {
+export function removeFromBlackoutPeriods (existingPeriods: ITimeRange[], deleteRange: ITimeRange): ITimeRange[] {
 	const result: ITimeRange[] = []
 
 	for (const period of existingPeriods) {
