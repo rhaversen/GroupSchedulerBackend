@@ -4,6 +4,9 @@ import { describe, it } from 'mocha'
 describe('Development Setup', function () {
 	before(function () {
 		// Setting up environment variables for testing
+		process.env.SMTP_SERVER = 'smtp.example.com'
+		process.env.SMTP_LOGIN = 'dummy'
+		process.env.SMTP_KEY = 'dummy'
 	})
 
 	after(function () {

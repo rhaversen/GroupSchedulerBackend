@@ -100,7 +100,7 @@ const timeRangeSchema = new Schema<ITimeRange>({
 	}
 }, { _id: false })
 
-const memberschema = new Schema<IMember>({
+const memberSchema = new Schema<IMember>({
 	userId: {
 		type: Schema.Types.ObjectId,
 		ref: 'User',
@@ -139,7 +139,7 @@ const eventSchema = new Schema<IEvent>({
 		maxLength: [1000, 'Event description is too long (maximum 1000 characters)']
 	},
 	members: {
-		type: [memberschema],
+		type: [memberSchema],
 		required: true,
 		validate: {
 			validator (members: IMember[]) {
@@ -162,12 +162,10 @@ const eventSchema = new Schema<IEvent>({
 			required: true,
 			validate: {
 				validator (this: IEvent, v: number) {
-					return v > this.timeWindow.start
+					const start = this.timeWindow?.start
+					return typeof start === 'number' && v > start
 				},
-				message (this: IEvent, props: { value: number }) {
-					const start = this.timeWindow.start
-					return `Event end time (${props.value}) must be after the window start (${start}).`
-				}
+				message: (props: { value: number }) => `Event end time (${props.value}) must be after the window start.`
 			}
 		}
 	},
@@ -191,15 +189,12 @@ const eventSchema = new Schema<IEvent>({
 		type: Schema.Types.Number,
 		validate: {
 			validator (this: IEvent, v: number) {
-				const withinWindow = v >= this.timeWindow.start && v + this.duration <= this.timeWindow.end
-				return withinWindow
+				const start = this.timeWindow?.start
+				const end = this.timeWindow?.end
+				if (typeof start !== 'number' || typeof end !== 'number') { return false }
+				return v >= start && v + this.duration <= end
 			},
-			message (this: IEvent, props: { value: number }) {
-				const start = this.timeWindow.start
-				const end = this.timeWindow.end
-				const maxEnd = start + this.duration
-				return `Scheduled time (${props.value}) must start no earlier than ${start}, end no later than ${end}, and finish by ${maxEnd}.`
-			}
+			message: (props: { value: number }) => `Scheduled time (${props.value}) is outside the allowed window or violates duration constraints.`
 		}
 	},
 	blackoutPeriods: [timeRangeSchema],
