@@ -220,7 +220,7 @@ userSchema.methods.confirmDeletion = async function (deletionCode: string): Prom
 userSchema.methods.resetPassword = async function (newPassword: string, passwordResetCode: string): Promise<void> {
 	const hasPasswordResetCode = this.passwordResetCode !== undefined
 	const isPasswordResetCodeValid = this.passwordResetCode === passwordResetCode
-	const isPasswordResetCodeExpired = new Date() >= this.passwordResetExpirationDate
+	const isPasswordResetCodeExpired = this.passwordResetExpirationDate !== undefined && new Date() >= this.passwordResetExpirationDate
 	if (hasPasswordResetCode && isPasswordResetCodeValid && !isPasswordResetCodeExpired) {
 		this.password = newPassword
 		this.passwordResetCode = undefined
