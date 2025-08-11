@@ -48,15 +48,29 @@ router.post('/register',
 )
 
 /**
- * @route GET /api/v1/users/:id
- * @description Get user by ID.
- * @access Public (limited info) / Private (full info for own user)
- * @param {string} req.params.id - The ID of the user.
+ * @route GET /api/v1/users/me
+ * @description Get the authenticated user's information.
+ * @access Private
+ * @param {Object} req.user - The authenticated user object.
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The user object. For other users: {_id, username, createdAt, updatedAt, email:null, expirationDate:null, confirmed:null}. For self: adds {email, expirationDate, confirmed}.
+ * @returns {Object} res.body - The authenticated user object with full details.
  */
-router.get('/:id',
-	getUser
+router.get('/me',
+	ensureAuthenticated,
+	getMe
+)
+
+/**
+ * @route PATCH /api/v1/users/me/password
+ * @description Update password for the authenticated user.
+ * @access Private
+ * @param {string} req.body.currentPassword - Current password.
+ * @param {string} req.body.newPassword - New password.
+ * @param {string} req.body.confirmNewPassword - Confirm new password.
+ */
+router.patch('/me/password',
+	ensureAuthenticated,
+	updatePassword
 )
 
 /**
@@ -112,29 +126,15 @@ router.post('/reset-password',
 )
 
 /**
- * @route PATCH /api/v1/users/me/password
- * @description Update password for the authenticated user.
- * @access Private
- * @param {string} req.body.currentPassword - Current password.
- * @param {string} req.body.newPassword - New password.
- * @param {string} req.body.confirmNewPassword - Confirm new password.
- */
-router.patch('/me/password',
-	ensureAuthenticated,
-	updatePassword
-)
-
-/**
- * @route GET /api/v1/users/me
- * @description Get the authenticated user's information.
- * @access Private
- * @param {Object} req.user - The authenticated user object.
+ * @route GET /api/v1/users/:id
+ * @description Get user by ID.
+ * @access Public (limited info) / Private (full info for own user)
+ * @param {string} req.params.id - The ID of the user.
  * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The authenticated user object with full details.
+ * @returns {Object} res.body - The user object. For other users: {_id, username, createdAt, updatedAt, email:null, expirationDate:null, confirmed:null}. For self: adds {email, expirationDate, confirmed}.
  */
-router.get('/me',
-	ensureAuthenticated,
-	getMe
+router.get('/:id',
+	getUser
 )
 
 /**
