@@ -19,9 +19,9 @@ describe('User Model', function () {
 
 	beforeEach(function () {
 		testUserFields = {
-			username: 'testuser',
+			username: 'testUser',
 			email: 'test@example.com',
-			password: 'testpassword123'
+			password: 'testPassword123'
 		}
 	})
 
@@ -130,7 +130,7 @@ describe('User Model', function () {
 				await user1.save()
 				const user2 = await UserModel.create({
 					...testUserFields,
-					username: 'differentuser'
+					username: 'differentUser'
 				})
 				await user2.save()
 			} catch {
@@ -206,7 +206,7 @@ describe('User Model', function () {
 			})
 
 			it('should return false for incorrect password', async function () {
-				const isMatch = await user.comparePassword('wrongpassword')
+				const isMatch = await user.comparePassword('wrongPassword')
 				expect(isMatch).to.be.false
 			})
 		})
@@ -252,7 +252,7 @@ describe('User Model', function () {
 		describe('resetPassword', function () {
 			it('should reset password with valid code', async function () {
 				const resetCode = await user.generateNewPasswordResetCode()
-				const newPassword = 'newpassword123'
+				const newPassword = 'newPassword123'
 
 				await user.resetPassword(newPassword, resetCode)
 				await user.save()
@@ -268,9 +268,9 @@ describe('User Model', function () {
 			it('should not reset password with invalid code', async function () {
 				await user.generateNewPasswordResetCode()
 				const oldPassword = user.password
-				const newPassword = 'newpassword123'
+				const newPassword = 'newPassword123'
 
-				await user.resetPassword(newPassword, 'invalidcode')
+				await user.resetPassword(newPassword, 'invalidCode')
 				await user.save()
 
 				expect(user.password).to.equal(oldPassword)
@@ -294,7 +294,7 @@ describe('User Model', function () {
 				await user.generateNewDeletionCode()
 				await user.save()
 
-				const result = await user.confirmDeletion('invalidcode')
+				const result = await user.confirmDeletion('invalidCode')
 				expect(result).to.be.false
 
 				const existingUser = await UserModel.findById(user._id)
@@ -362,10 +362,10 @@ describe('User Model', function () {
 			const user = await UserModel.create(testUserFields)
 			const originalHash = user.password
 
-			user.password = 'newpassword123'
+			user.password = 'newPassword123'
 			await user.save()
 
-			expect(user.password).to.not.equal('newpassword123')
+			expect(user.password).to.not.equal('newPassword123')
 			expect(user.password).to.not.equal(originalHash)
 			expect(user.passwordResetCode).to.be.undefined
 		})

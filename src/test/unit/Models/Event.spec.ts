@@ -27,9 +27,9 @@ describe('Event Model', function () {
 
 	beforeEach(async function () {
 		testUser = await UserModel.create({
-			username: 'testuser',
+			username: 'testUser',
 			email: 'test@example.com',
-			password: 'testpassword123'
+			password: 'testPassword123'
 		})
 
 		const futureStart = Date.now() + 86400000 // 1 day from now
@@ -426,7 +426,7 @@ describe('Event Model', function () {
 	describe('Multiple Members', function () {
 		it('should allow multiple members with different roles', async function () {
 			const secondUser = await UserModel.create({
-				username: 'seconduser',
+				username: 'secondUser',
 				email: 'second@example.com',
 				password: 'password123'
 			})
@@ -454,7 +454,7 @@ describe('Event Model', function () {
 
 		it('should default member role to participant', async function () {
 			const secondUser = await UserModel.create({
-				username: 'seconduser',
+				username: 'secondUser',
 				email: 'second@example.com',
 				password: 'password123'
 			})
