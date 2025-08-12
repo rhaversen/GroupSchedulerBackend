@@ -97,7 +97,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 8 * 60
+	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -114,7 +114,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [{ start: now + 3 * day + 3 * hour, end: now + 3 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 2 * day + 6 * hour, end: now + 2 * day + 9 * hour }],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -131,7 +131,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -149,7 +149,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 3 * day + 2 * hour, end: now + 3 * day + 6 * hour }],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -167,7 +167,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -183,7 +183,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -201,7 +201,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [{ start: now + 6 * day, end: now + 6 * day + 2 * hour }],
 	preferredTimes: [{ start: now + 5 * day + 3 * hour, end: now + 5 * day + 7 * hour }],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -218,7 +218,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [{ start: now + 5 * day + 1 * hour, end: now + 5 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 5 * day, end: now + 5 * day + 4 * hour }],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -234,7 +234,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -250,7 +250,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -274,7 +274,7 @@ await EventModel.create({
 		{ start: now + 6 * day + 2 * hour, end: now + 6 * day + 7 * hour },
 		{ start: now + 8 * day + 1 * hour, end: now + 8 * day + 4 * hour }
 	],
-	dailyStartConstraint: 0
+	dailyStartConstraints: []
 })
 
 await EventModel.create({
@@ -291,7 +291,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -308,7 +308,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [{ start: now + 20 * day, end: now + 20 * day + 6 * hour }],
 	preferredTimes: [{ start: now + 25 * day, end: now + 25 * day + 14 * hour }],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -324,7 +324,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [{ start: now + 1 * day + 5 * hour, end: now + 1 * day + 6 * hour }],
 	preferredTimes: [],
-	dailyStartConstraint: 14 * 60
+	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -342,7 +342,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 11 * 60
+	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -360,7 +360,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -382,7 +382,7 @@ await EventModel.create({
 		{ start: now + 7 * day + 2 * hour, end: now + 7 * day + 6 * hour },
 		{ start: now + 10 * day + 1 * hour, end: now + 10 * day + 5 * hour }
 	],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -395,7 +395,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 8 * 60
+	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -412,7 +412,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 15 * 60
+	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -429,7 +429,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -442,7 +442,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -459,7 +459,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [{ start: now + 8 * day, end: now + 8 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 4 * day, end: now + 4 * day + 3 * hour }],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -476,7 +476,7 @@ await EventModel.create({
 		{ start: now + 7 * day, end: now + 7 * day + 12 * hour }
 	],
 	preferredTimes: [],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -498,7 +498,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 8 * day + 1 * hour, end: now + 8 * day + 5 * hour }],
-	dailyStartConstraint: 8 * 60
+	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -511,7 +511,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 3 * day, end: now + 3 * day + 3 * hour }],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -524,7 +524,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -542,7 +542,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 13 * 60
+	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -561,7 +561,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 14 * 60
+	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -574,7 +574,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [{ start: now + 9 * day, end: now + 10 * day }],
 	preferredTimes: [],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -591,7 +591,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 11 * 60
+	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -604,7 +604,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 // Additional realistic scenario events focusing on status transitions and confirmations
@@ -623,7 +623,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 2 * day + 8 * hour, end: now + 2 * day + 11 * hour }],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -645,7 +645,7 @@ await EventModel.create({
 		{ start: now + 6 * day + 13 * hour, end: now + 6 * day + 16 * hour },
 		{ start: now + 7 * day + 14 * hour, end: now + 7 * day + 17 * hour }
 	],
-	dailyStartConstraint: 14 * 60
+	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -664,7 +664,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 11 * 60
+	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -682,7 +682,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [{ start: now + 9 * day + 10 * hour, end: now + 9 * day + 13 * hour }],
 	preferredTimes: [{ start: now + 8 * day + 14 * hour, end: now + 8 * day + 18 * hour }],
-	dailyStartConstraint: 15 * 60
+	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -703,7 +703,7 @@ await EventModel.create({
 		{ start: now + 15 * day + 8 * hour, end: now + 15 * day + 12 * hour },
 		{ start: now + 16 * day + 9 * hour, end: now + 16 * day + 12 * hour }
 	],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -721,7 +721,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 9 * day + 16 * hour, end: now + 9 * day + 19 * hour }],
-	dailyStartConstraint: 17 * 60
+	dailyStartConstraints: [{ start: 17 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -738,7 +738,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [{ start: now + 12 * day, end: now + 12 * day + 6 * hour }],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -751,7 +751,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 13 * 60
+	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -767,7 +767,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 16 * 60
+	dailyStartConstraints: [{ start: 16 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -791,7 +791,7 @@ await EventModel.create({
 		{ start: now + 12 * day + 15 * hour, end: now + 12 * day + 18 * hour },
 		{ start: now + 13 * day + 16 * hour, end: now + 13 * day + 19 * hour }
 	],
-	dailyStartConstraint: 16 * 60
+	dailyStartConstraints: [{ start: 16 * 60, end: 24 * 60 }]
 })
 
 // Events where TestUser participates but is not the creator
@@ -810,7 +810,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -828,7 +828,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [{ start: now + 12 * day + 13 * hour, end: now + 12 * day + 16 * hour }],
 	preferredTimes: [{ start: now + 7 * day + 14 * hour, end: now + 7 * day + 17 * hour }],
-	dailyStartConstraint: 11 * 60
+	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -846,7 +846,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 6 * day + 12 * hour, end: now + 6 * day + 15 * hour }],
-	dailyStartConstraint: 13 * 60
+	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -864,7 +864,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 14 * 60
+	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -881,7 +881,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 15 * 60
+	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -902,7 +902,7 @@ await EventModel.create({
 		{ start: now + 9 * day + 9 * hour, end: now + 9 * day + 13 * hour },
 		{ start: now + 10 * day + 11 * hour, end: now + 10 * day + 15 * hour }
 	],
-	dailyStartConstraint: 12 * 60
+	dailyStartConstraints: [{ start: 12 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -921,7 +921,7 @@ await EventModel.create({
 	public: false,
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 // Multi-creator scenarios
@@ -943,7 +943,7 @@ await EventModel.create({
 		{ start: now + 6 * day + 14 * hour, end: now + 6 * day + 16 * hour },
 		{ start: now + 7 * day + 10 * hour, end: now + 7 * day + 12 * hour }
 	],
-	dailyStartConstraint: 10 * 60
+	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -962,7 +962,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 14 * day + 10 * hour, end: now + 14 * day + 13 * hour }],
-	dailyStartConstraint: 11 * 60
+	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -984,7 +984,7 @@ await EventModel.create({
 		{ start: now + 12 * day + 8 * hour, end: now + 12 * day + 12 * hour },
 		{ start: now + 13 * day + 8 * hour, end: now + 13 * day + 11 * hour }
 	],
-	dailyStartConstraint: 13 * 60
+	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -1003,7 +1003,7 @@ await EventModel.create({
 	public: true,
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 10 * day + 14 * hour, end: now + 10 * day + 16 * hour }],
-	dailyStartConstraint: 14 * 60
+	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 // Additional realistic scheduled events with blackout periods, preferred times and multi-hour durations
@@ -1029,7 +1029,7 @@ await EventModel.create({
 		{ start: now + 11 * day + 18 * hour, end: now + 11 * day + 22 * hour },
 		{ start: now + 12 * day + 16 * hour, end: now + 12 * day + 20 * hour }
 	],
-	dailyStartConstraint: 18 * 60
+	dailyStartConstraints: [{ start: 18 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -1053,7 +1053,7 @@ await EventModel.create({
 		{ start: now + 14 * day + 7 * hour, end: now + 14 * day + 11 * hour },
 		{ start: now + 15 * day + 6 * hour, end: now + 15 * day + 10 * hour }
 	],
-	dailyStartConstraint: 7 * 60
+	dailyStartConstraints: [{ start: 7 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -1076,7 +1076,7 @@ await EventModel.create({
 		{ start: now + 9 * day + 20 * hour, end: now + 9 * day + 23 * hour },
 		{ start: now + 10 * day + 19 * hour, end: now + 10 * day + 22 * hour }
 	],
-	dailyStartConstraint: 20 * 60
+	dailyStartConstraints: [{ start: 20 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -1099,7 +1099,7 @@ await EventModel.create({
 		{ start: now + 16 * day + 12 * hour, end: now + 16 * day + 15 * hour },
 		{ start: now + 17 * day + 9 * hour, end: now + 17 * day + 12 * hour }
 	],
-	dailyStartConstraint: 9 * 60
+	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
 })
 
 // Long duration events (slightly over a day and over a week)
@@ -1122,7 +1122,7 @@ await EventModel.create({
 	preferredTimes: [
 		{ start: now + 6 * day + 2 * hour, end: now + 6 * day + 5 * hour }
 	],
-	dailyStartConstraint: 2 * 60
+	dailyStartConstraints: [{ start: 2 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
@@ -1146,7 +1146,7 @@ await EventModel.create({
 		{ start: now + 16 * day + 2 * hour, end: now + 16 * day + 6 * hour },
 		{ start: now + 17 * day + 9 * hour, end: now + 17 * day + 13 * hour }
 	],
-	dailyStartConstraint: 8 * 60
+	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
 })
 
 // Sessions (retained original style & a few referencing new users)
