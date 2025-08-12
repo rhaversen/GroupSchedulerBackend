@@ -93,8 +93,8 @@ await EventModel.create({
 	members: [{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' }],
 	duration: 2 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 2 * day },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
@@ -111,7 +111,7 @@ await EventModel.create({
 	duration: 90 * 60 * 1000,
 	timeWindow: { start: now + 2 * day, end: now + 5 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 3 * day + 3 * hour, end: now + 3 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 2 * day + 6 * hour, end: now + 2 * day + 9 * hour }],
 	dailyStartConstraints: []
@@ -128,7 +128,7 @@ await EventModel.create({
 	duration: 3 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 6 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -146,7 +146,7 @@ await EventModel.create({
 	duration: 4 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 9 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 3 * day + 2 * hour, end: now + 3 * day + 6 * hour }],
 	dailyStartConstraints: []
@@ -164,7 +164,7 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 12 * day },
 	status: 'scheduled',
 	scheduledTime: now + 3 * day + 5 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: []
@@ -180,7 +180,7 @@ await EventModel.create({
 	duration: 60 * 60 * 1000,
 	timeWindow: { start: now + 1 * day, end: now + 4 * day },
 	status: 'cancelled',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: []
@@ -198,7 +198,7 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 20 * day },
 	status: 'confirmed',
 	scheduledTime: now + 5 * day + 4 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 6 * day, end: now + 6 * day + 2 * hour }],
 	preferredTimes: [{ start: now + 5 * day + 3 * hour, end: now + 5 * day + 7 * hour }],
 	dailyStartConstraints: []
@@ -215,7 +215,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 10 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 5 * day + 1 * hour, end: now + 5 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 5 * day, end: now + 5 * day + 4 * hour }],
 	dailyStartConstraints: []
@@ -231,7 +231,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 7 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: []
@@ -246,8 +246,8 @@ await EventModel.create({
 	],
 	duration: 90 * 60 * 1000,
 	timeWindow: { start: now + 2 * day, end: now + 9 * day },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: []
@@ -268,7 +268,7 @@ await EventModel.create({
 	duration: 5 * hour,
 	timeWindow: { start: now + 4 * day, end: now + 30 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 10 * day, end: now + 10 * day + 3 * hour }],
 	preferredTimes: [
 		{ start: now + 6 * day + 2 * hour, end: now + 6 * day + 7 * hour },
@@ -288,7 +288,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 15 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -305,7 +305,7 @@ await EventModel.create({
 	duration: 12 * hour,
 	timeWindow: { start: now + 5 * day, end: now + 60 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 20 * day, end: now + 20 * day + 6 * hour }],
 	preferredTimes: [{ start: now + 25 * day, end: now + 25 * day + 14 * hour }],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -321,7 +321,7 @@ await EventModel.create({
 	duration: 60 * 60 * 1000,
 	timeWindow: { start: now + 1 * day + 2 * hour, end: now + 1 * day + 8 * hour },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 1 * day + 5 * hour, end: now + 1 * day + 6 * hour }],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
@@ -339,7 +339,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 9 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
@@ -357,7 +357,7 @@ await EventModel.create({
 	duration: 3 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 11 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -374,7 +374,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 25 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [
 		{ start: now + 3 * day, end: now + 3 * day + 4 * hour },
@@ -391,8 +391,8 @@ await EventModel.create({
 	members: [{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' }],
 	duration: 60000,
 	timeWindow: { start: now + 1 * day, end: now + 1 * day + 3 * hour },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
@@ -409,7 +409,7 @@ await EventModel.create({
 	timeWindow: { start: now + 5 * day, end: now + 5 * day + 10 * hour },
 	status: 'scheduled',
 	scheduledTime: (now + 5 * day + 10 * hour) - 2 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
@@ -426,7 +426,7 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 15 * day },
 	status: 'cancelled',
 	scheduledTime: now + 4 * day + 3 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -439,7 +439,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 9 * day },
 	status: 'confirmed',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -456,7 +456,7 @@ await EventModel.create({
 	duration: 3 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 18 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 8 * day, end: now + 8 * day + 5 * hour }],
 	preferredTimes: [{ start: now + 4 * day, end: now + 4 * day + 3 * hour }],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -469,7 +469,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 12 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [
 		{ start: now + 3 * day, end: now + 3 * day + 6 * hour },
 		{ start: now + 4 * day + 10 * hour, end: now + 4 * day + 14 * hour },
@@ -495,7 +495,7 @@ await EventModel.create({
 	duration: 4 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 20 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 8 * day + 1 * hour, end: now + 8 * day + 5 * hour }],
 	dailyStartConstraints: [{ start: 8 * 60, end: 24 * 60 }]
@@ -507,8 +507,8 @@ await EventModel.create({
 	members: [{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' }, { userId: userOmega._id, role: 'participant', availabilityStatus: 'available' }],
 	duration: 2 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 9 * day },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 3 * day, end: now + 3 * day + 3 * hour }],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -521,7 +521,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 6 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -539,7 +539,7 @@ await EventModel.create({
 	timeWindow: { start: now + 5 * day, end: now + 15 * day },
 	status: 'confirmed',
 	scheduledTime: now + 7 * day + 3 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
@@ -558,20 +558,20 @@ await EventModel.create({
 	duration: 3 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 18 * day },
 	status: 'cancelled',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scheduling Event With Single Blackout Covering Entire Window',
+	name: 'Scheduling Event Blackout Covering Window',
 	description: 'Blackout covers entire window except maybe scheduling edge',
 	members: [{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' }, { userId: userLambda._id, role: 'participant', availabilityStatus: 'available' }],
 	duration: 2 * hour,
 	timeWindow: { start: now + 9 * day, end: now + 10 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 9 * day, end: now + 10 * day }],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -588,7 +588,7 @@ await EventModel.create({
 	timeWindow: { start: now + 4 * day, end: now + 14 * day },
 	status: 'scheduled',
 	scheduledTime: now + 6 * day + 2 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
@@ -600,8 +600,8 @@ await EventModel.create({
 	members: [{ userId: userXi._id, role: 'creator', availabilityStatus: 'available' }],
 	duration: 2 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 4 * day },
-	status: 'draft',
-	public: true,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -620,7 +620,7 @@ await EventModel.create({
 	timeWindow: { start: now + 1 * day, end: now + 15 * day },
 	status: 'confirmed',
 	scheduledTime: now + 2 * day + 9 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 2 * day + 8 * hour, end: now + 2 * day + 11 * hour }],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -639,7 +639,7 @@ await EventModel.create({
 	timeWindow: { start: now + 3 * day, end: now + 25 * day },
 	status: 'confirmed',
 	scheduledTime: now + 6 * day + 14 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [{ start: now + 10 * day + 9 * hour, end: now + 10 * day + 12 * hour }],
 	preferredTimes: [
 		{ start: now + 6 * day + 13 * hour, end: now + 6 * day + 16 * hour },
@@ -661,7 +661,7 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 18 * day },
 	status: 'confirmed',
 	scheduledTime: now + 4 * day + 11 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
@@ -679,7 +679,7 @@ await EventModel.create({
 	timeWindow: { start: now + 5 * day, end: now + 21 * day },
 	status: 'confirmed',
 	scheduledTime: now + 8 * day + 15 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 9 * day + 10 * hour, end: now + 9 * day + 13 * hour }],
 	preferredTimes: [{ start: now + 8 * day + 14 * hour, end: now + 8 * day + 18 * hour }],
 	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
@@ -697,7 +697,7 @@ await EventModel.create({
 	timeWindow: { start: now + 10 * day, end: now + 40 * day },
 	status: 'scheduled',
 	scheduledTime: now + 15 * day + 9 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [
 		{ start: now + 15 * day + 8 * hour, end: now + 15 * day + 12 * hour },
@@ -718,7 +718,7 @@ await EventModel.create({
 	timeWindow: { start: now + 7 * day, end: now + 28 * day },
 	status: 'scheduled',
 	scheduledTime: now + 9 * day + 17 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 9 * day + 16 * hour, end: now + 9 * day + 19 * hour }],
 	dailyStartConstraints: [{ start: 17 * 60, end: 24 * 60 }]
@@ -735,7 +735,7 @@ await EventModel.create({
 	duration: 4 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 22 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 12 * day, end: now + 12 * day + 6 * hour }],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
@@ -747,8 +747,8 @@ await EventModel.create({
 	members: [{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' }],
 	duration: 2 * hour,
 	timeWindow: { start: now + 8 * day, end: now + 14 * day },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
@@ -764,7 +764,7 @@ await EventModel.create({
 	duration: 90 * 60 * 1000,
 	timeWindow: { start: now + 3 * day, end: now + 16 * day },
 	status: 'cancelled',
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 16 * 60, end: 24 * 60 }]
@@ -785,7 +785,7 @@ await EventModel.create({
 	timeWindow: { start: now + 9 * day, end: now + 35 * day },
 	status: 'confirmed',
 	scheduledTime: now + 12 * day + 16 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 20 * day + 8 * hour, end: now + 20 * day + 11 * hour }],
 	preferredTimes: [
 		{ start: now + 12 * day + 15 * hour, end: now + 12 * day + 18 * hour },
@@ -796,7 +796,7 @@ await EventModel.create({
 
 // Events where TestUser participates but is not the creator
 await EventModel.create({
-	name: 'Scenario: Scheduled Private Meeting (TestUser participant, not creator)',
+	name: 'Scheduled Private Meeting (TestUser participant)',
 	description: 'Covers case where TestUser is a regular participant in a scheduled private meeting they did not create.',
 	members: [
 		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'available' },
@@ -807,14 +807,14 @@ await EventModel.create({
 	timeWindow: { start: now + 2 * day, end: now + 14 * day },
 	status: 'scheduled',
 	scheduledTime: now + 4 * day + 10 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 10 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduling Private Meeting (TestUser participant, tentative)',
+	name: 'Scheduling Private Meeting (TestUser, tentative)',
 	description: 'Covers scheduling phase where TestUser is tentative participant; creator and admin are other users.',
 	members: [
 		{ userId: userGamma._id, role: 'creator', availabilityStatus: 'available' },
@@ -825,14 +825,14 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 5 * day, end: now + 25 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 12 * day + 13 * hour, end: now + 12 * day + 16 * hour }],
 	preferredTimes: [{ start: now + 7 * day + 14 * hour, end: now + 7 * day + 17 * hour }],
 	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Confirmed Public Event (TestUser participant)',
+	name: 'Confirmed Public Event (TestUser participant)',
 	description: 'Covers confirmed public event where TestUser is a non-creator attendee; includes preferred window alignment.',
 	members: [
 		{ userId: userOmega._id, role: 'creator', availabilityStatus: 'available' },
@@ -843,14 +843,14 @@ await EventModel.create({
 	timeWindow: { start: now + 3 * day, end: now + 18 * day },
 	status: 'confirmed',
 	scheduledTime: now + 6 * day + 13 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 6 * day + 12 * hour, end: now + 6 * day + 15 * hour }],
 	dailyStartConstraints: [{ start: 13 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Cancelled Private Event (TestUser participant)',
+	name: 'Cancelled Private Event (TestUser participant)',
 	description: 'Covers cancelled event scenario after scheduling where TestUser was only a participant.',
 	members: [
 		{ userId: userLambda._id, role: 'creator', availabilityStatus: 'unavailable' },
@@ -861,14 +861,14 @@ await EventModel.create({
 	timeWindow: { start: now + 4 * day, end: now + 16 * day },
 	status: 'cancelled',
 	scheduledTime: now + 5 * day + 15 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Draft Event (TestUser invited, not creator)',
+	name: 'Draft Event (TestUser invited, not creator)',
 	description: 'Covers draft event where TestUser has tentative availability and is not the creator.',
 	members: [
 		{ userId: userNu._id, role: 'creator', availabilityStatus: 'available' },
@@ -877,15 +877,15 @@ await EventModel.create({
 	],
 	duration: 2 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 13 * day },
-	status: 'draft',
-	public: false,
+	status: 'scheduling',
+	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 15 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduling Public Event (TestUser participant)',
+	name: 'Scheduling Public Event (TestUser participant)',
 	description: 'Covers public event in scheduling state where TestUser and others propose times; not a creator.',
 	members: [
 		{ userId: userOmicron._id, role: 'creator', availabilityStatus: 'available' },
@@ -896,7 +896,7 @@ await EventModel.create({
 	duration: 4 * hour,
 	timeWindow: { start: now + 8 * day, end: now + 26 * day },
 	status: 'scheduling',
-	public: true,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 14 * day, end: now + 14 * day + 5 * hour }],
 	preferredTimes: [
 		{ start: now + 9 * day + 9 * hour, end: now + 9 * day + 13 * hour },
@@ -906,7 +906,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Confirmed Private Event (TestUser participant)',
+	name: 'Confirmed Private Event (TestUser participant)',
 	description: 'Covers confirmed private event where TestUser participates but another user owns it.',
 	members: [
 		{ userId: userTau._id, role: 'creator', availabilityStatus: 'available' },
@@ -918,7 +918,7 @@ await EventModel.create({
 	timeWindow: { start: now + 7 * day, end: now + 24 * day },
 	status: 'confirmed',
 	scheduledTime: now + 11 * day + 10 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
 	dailyStartConstraints: [{ start: 9 * 60, end: 24 * 60 }]
@@ -926,7 +926,7 @@ await EventModel.create({
 
 // Multi-creator scenarios
 await EventModel.create({
-	name: 'Scenario: Scheduling Event With Multiple Creators (TestUser co-creator)',
+	name: 'Scheduling Event With TestUser co-creator',
 	description: 'Covers scheduling state where TestUser and another user are both creators; tests authorization logic for multiple creators.',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
@@ -937,7 +937,7 @@ await EventModel.create({
 	duration: 2 * hour,
 	timeWindow: { start: now + 5 * day, end: now + 20 * day },
 	status: 'scheduling',
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 9 * day + 12 * hour, end: now + 9 * day + 15 * hour }],
 	preferredTimes: [
 		{ start: now + 6 * day + 14 * hour, end: now + 6 * day + 16 * hour },
@@ -947,7 +947,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Confirmed Event With Multiple Creators (TestUser admin)',
+	name: 'Confirmed Event With Creators (TestUser admin)',
 	description: 'Covers confirmed event with multiple creators (excluding TestUser) where TestUser is an admin with elevated privileges but not creator.',
 	members: [
 		{ userId: userDelta._id, role: 'creator', availabilityStatus: 'available' },
@@ -959,14 +959,14 @@ await EventModel.create({
 	timeWindow: { start: now + 10 * day, end: now + 28 * day },
 	status: 'confirmed',
 	scheduledTime: now + 14 * day + 11 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 14 * day + 10 * hour, end: now + 14 * day + 13 * hour }],
 	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled Event With Multiple Creators (TestUser participant)',
+	name: 'Scheduled Event With Creators TestUser participant',
 	description: 'Covers scheduled (not yet confirmed) event with multiple creators; TestUser is a simple participant.',
 	members: [
 		{ userId: userEta._id, role: 'creator', availabilityStatus: 'available' },
@@ -978,7 +978,7 @@ await EventModel.create({
 	timeWindow: { start: now + 9 * day, end: now + 30 * day },
 	status: 'scheduled',
 	scheduledTime: now + 13 * day + 9 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [{ start: now + 15 * day + 13 * hour, end: now + 15 * day + 17 * hour }],
 	preferredTimes: [
 		{ start: now + 12 * day + 8 * hour, end: now + 12 * day + 12 * hour },
@@ -988,7 +988,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled Two-Creator Event (Second Creator Has Long Username)',
+	name: 'Second Creator Has Long Username',
 	description: 'Covers UI/logic where the secondary creator possesses an exceptionally long username; tests truncation/role handling.',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
@@ -1000,7 +1000,7 @@ await EventModel.create({
 	timeWindow: { start: now + 6 * day, end: now + 22 * day },
 	status: 'scheduled',
 	scheduledTime: now + 10 * day + 15 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 10 * day + 14 * hour, end: now + 10 * day + 16 * hour }],
 	dailyStartConstraints: [{ start: 14 * 60, end: 24 * 60 }]
@@ -1008,7 +1008,7 @@ await EventModel.create({
 
 // Additional realistic scheduled events with blackout periods, preferred times and multi-hour durations
 await EventModel.create({
-	name: 'Scenario: Scheduled Data Lake Migration Planning',
+	name: 'Scheduled Data Lake Migration Planning',
 	description: 'Scheduled multi-hour planning block with morning blackout due to maintenance; afternoon preferred slots.',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
@@ -1020,7 +1020,7 @@ await EventModel.create({
 	timeWindow: { start: now + 8 * day, end: now + 18 * day },
 	status: 'scheduled',
 	scheduledTime: now + 11 * day + 19 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [
 		{ start: now + 11 * day + 6 * hour, end: now + 11 * day + 9 * hour }, // maintenance
 		{ start: now + 12 * day + 13 * hour, end: now + 12 * day + 15 * hour } // leadership overlap
@@ -1033,7 +1033,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled Regional Rollout Coordination',
+	name: 'Scheduled Regional Rollout Coordination',
 	description: 'Scheduled coordination spanning multiple time zones; midday blackout, early/late preferred bands.',
 	members: [
 		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'available' },
@@ -1045,7 +1045,7 @@ await EventModel.create({
 	timeWindow: { start: now + 9 * day, end: now + 25 * day },
 	status: 'scheduled',
 	scheduledTime: now + 14 * day + 8 * hour,
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [
 		{ start: now + 14 * day + 11 * hour, end: now + 14 * day + 13 * hour } // lunch / system change freeze
 	],
@@ -1057,7 +1057,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled Quarterly Cost Review',
+	name: 'Scheduled Quarterly Cost Review',
 	description: 'Scheduled finance review; blackout for audit sync; narrow preferred ranges evening hours.',
 	members: [
 		{ userId: userTheta._id, role: 'creator', availabilityStatus: 'available' },
@@ -1068,7 +1068,7 @@ await EventModel.create({
 	timeWindow: { start: now + 7 * day, end: now + 20 * day },
 	status: 'scheduled',
 	scheduledTime: now + 9 * day + 21 * hour,
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [
 		{ start: now + 9 * day + 17 * hour, end: now + 9 * day + 19 * hour }
 	],
@@ -1080,7 +1080,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled Innovation Workshop (Daily Window Constraint)',
+	name: 'Scheduled Event (Daily Window Constraint)',
 	description: 'Scheduled creative workshop respecting a daily intra-day allowable window (09:00-17:30).',
 	members: [
 		{ userId: userNu._id, role: 'creator', availabilityStatus: 'available' },
@@ -1091,7 +1091,7 @@ await EventModel.create({
 	timeWindow: { start: now + 10 * day, end: now + 27 * day },
 	status: 'scheduled',
 	scheduledTime: now + 16 * day + 13 * hour, // 13:00 local within daily window
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [
 		{ start: now + 16 * day + 9 * hour, end: now + 16 * day + 11 * hour } // earlier conflicting session
 	],
@@ -1104,7 +1104,7 @@ await EventModel.create({
 
 // Long duration events (slightly over a day and over a week)
 await EventModel.create({
-	name: 'Scenario: Scheduled 26h Maintenance Window Event',
+	name: 'Scheduled 26h Maintenance Window Event',
 	description: 'Event spanning slightly more than one day (26h) to test multi-day handling with blackout inside window.',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
@@ -1115,7 +1115,7 @@ await EventModel.create({
 	timeWindow: { start: now + 5 * day, end: now + 9 * day },
 	status: 'scheduled',
 	scheduledTime: now + 6 * day + 3 * hour, // fits fully before end
-	public: false,
+	visibility: 'private',
 	blackoutPeriods: [
 		{ start: now + 6 * day + 12 * hour, end: now + 6 * day + 15 * hour } // midday outage inside span
 	],
@@ -1126,7 +1126,7 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scenario: Scheduled 7.5 Day Program Increment Planning',
+	name: 'Scheduled 7.5 Day Program Increment Planning',
 	description: 'Event slightly exceeding one week (~7.5 days) to test long durations near window boundary.',
 	members: [
 		{ userId: userGamma._id, role: 'creator', availabilityStatus: 'available' },
@@ -1137,7 +1137,7 @@ await EventModel.create({
 	timeWindow: { start: now + 15 * day, end: now + 30 * day },
 	status: 'scheduled',
 	scheduledTime: now + 16 * day, // ensure end at 16d + 7.5d < 30d
-	public: true,
+	visibility: 'public',
 	blackoutPeriods: [
 		{ start: now + 19 * day + 8 * hour, end: now + 19 * day + 12 * hour },
 		{ start: now + 21 * day + 14 * hour, end: now + 21 * day + 18 * hour }
