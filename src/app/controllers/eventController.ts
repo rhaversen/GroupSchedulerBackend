@@ -253,6 +253,10 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		const requestedVisibility = body.visibility
 		const scheduledTime = body.scheduledTime ?? event.scheduledTime
 
+		// Track if timing related fields changed to potentially revert status -> scheduling
+		const timingFields: (keyof IEvent)[] = ['timeWindow', 'duration', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
+		const timingFieldChanged = timingFields.some(f => body[f] !== undefined)
+
 		// Collect other (non status/time) fields to update after validation
 		const otherFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'visibility', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
 
@@ -288,7 +292,6 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 				}
 				case 'scheduled': {
 					if (requestedStatus === undefined) {
-						// Only allow scheduledTime presence if it remains set (cannot unset)
 						if (body.scheduledTime !== undefined && scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
 						break
 					}
@@ -298,6 +301,8 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 						if (scheduledTime == null) { await reject('scheduledTime must be set to confirm scheduled events'); return }
 					} else if (requestedStatus === 'cancelled') {
 						// always allowed
+					} else if (requestedStatus === 'scheduling') {
+						// Allow reverting to scheduling explicitly (will clear scheduledTime later)
 					} else {
 						await reject(`Invalid status transition from scheduled to ${requestedStatus}`); return
 					}
@@ -306,10 +311,13 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 				case 'confirmed': {
 					if (requestedStatus === undefined || requestedStatus === 'confirmed') {
 						if (body.scheduledTime !== undefined && body.scheduledTime !== event.scheduledTime) { await reject('Cannot change scheduledTime after confirmation'); return }
+						// Allow implicit timing edits to revert status to scheduling handled later
 					} else if (requestedStatus === 'cancelled') {
 						// allowed
+					} else if (requestedStatus === 'scheduling') {
+						// Explicit revert to scheduling allowed when modifying timing (validated later)
 					} else {
-						await reject(`Confirmed events can only be cancelled; attempted: ${requestedStatus}`); return
+						await reject(`Confirmed events can only be cancelled or reverted to scheduling by timing changes; attempted: ${requestedStatus}`); return
 					}
 					break
 				}
@@ -318,10 +326,21 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			if (requestedStatus !== undefined) { statusChangeAllowed = true }
 		}
 
+		// Automatic status reversion: if timing fields changed and not cancelling, force status -> scheduling
+		if (!statusChangeAllowed && timingFieldChanged && requestedStatus === undefined && (event.status === 'scheduling' || event.status === 'scheduled' || event.status === 'confirmed')) {
+			statusChangeAllowed = true
+			body.status = 'scheduling'
+		}
+
 		// Apply status & scheduledTime mutations after validation logic
-		if (requestedStatus !== undefined && statusChangeAllowed) {
-			if (requestedStatus !== event.status) {
-				event.set('status', requestedStatus)
+		const effectiveRequestedStatus = body.status ?? requestedStatus
+		if (effectiveRequestedStatus !== undefined && statusChangeAllowed) {
+			if (effectiveRequestedStatus !== event.status) {
+				// Clearing scheduledTime when reverting back to scheduling due to timing changes
+				if (effectiveRequestedStatus === 'scheduling') {
+					event.set('scheduledTime', undefined)
+				}
+				event.set('status', effectiveRequestedStatus)
 				updateApplied = true
 			}
 		}
@@ -332,6 +351,9 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		if (body.scheduledTime !== undefined) {
 			if (event.status === 'confirmed') {
 				// Already enforced earlier; double guard
+			} else if ((body.status ?? requestedStatus) === 'scheduling') {
+				// scheduledTime not retained when reverting to scheduling
+				event.set('scheduledTime', undefined)
 			} else {
 				event.set('scheduledTime', body.scheduledTime)
 				updateApplied = true
@@ -349,8 +371,8 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			}
 		}
 
-		// If confirmed and not cancelling, restrict other field modifications
-		if (event.status === 'confirmed' && requestedStatus !== 'cancelled') {
+		// If confirmed and not cancelling, restrict other field modifications unless reverting to scheduling (explicit or implicit timing change)
+		if (event.status === 'confirmed' && requestedStatus !== 'cancelled' && (body.status ?? requestedStatus) !== 'scheduling') {
 			const otherChange = otherFields.some(f => body[f] !== undefined)
 			if (otherChange) { await reject('Cannot modify confirmed events except to cancel them'); return }
 		}
