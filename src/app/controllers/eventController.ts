@@ -24,6 +24,7 @@ export async function transformEvent (
 			public: event.public,
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
+			dailyStartConstraint: event.dailyStartConstraint,
 			createdAt: event.createdAt,
 			updatedAt: event.updatedAt
 		}
@@ -87,7 +88,8 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		timeWindow,
 		duration,
 		blackoutPeriods,
-		preferredTimes
+		preferredTimes,
+		dailyStartConstraint
 	} = req.body
 
 	try {
@@ -98,7 +100,8 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 			timeWindow,
 			duration,
 			blackoutPeriods: blackoutPeriods ?? [],
-			preferredTimes
+			preferredTimes,
+			dailyStartConstraint
 		}
 
 		const newEvent = await EventModel.create(eventData)
@@ -191,7 +194,7 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		}
 
 		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
+		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraint']
 
 		for (const field of updatableFields) {
 			if (req.body[field] !== undefined) {

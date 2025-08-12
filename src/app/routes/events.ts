@@ -34,6 +34,7 @@ const router = Router()
  * @param {boolean} [req.body.public] - Whether the event is public (optional, defaults to false).
  * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
  * @param {Array<{start:number,end:number}>} [req.body.preferredTimes] - Preferred time ranges.
+ * @param {number} req.body.dailyStartConstraint - Intra-day start constraint (minute of day).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The created event object.
  */
@@ -136,6 +137,7 @@ router.get('/:id',
  * @param {boolean} [req.body.public] - Whether the event is public (optional).
  * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
  * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
+ * @param {number} [req.body.dailyStartConstraint] - Intra-day start constraint (minute of day).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated event object.
  */
