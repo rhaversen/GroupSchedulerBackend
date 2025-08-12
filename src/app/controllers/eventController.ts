@@ -226,7 +226,10 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (!isEventAdmin(event, user.id) && !isEventCreator(event, user.id)) {
+		const userIsCreator = isEventCreator(event, user.id)
+		const userIsAdmin = isEventAdmin(event, user.id)
+
+		if (!userIsAdmin && !userIsCreator) {
 			logger.warn(`Update event failed: User ${user.id} not authorized to edit event ${eventId}`)
 			res.status(403).json({ error: 'Not authorized to edit this event' })
 			await session.abortTransaction()
@@ -347,15 +350,52 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		for (const f of otherFields) {
 			if (body[f] !== undefined) {
 				if (f === 'members') {
-					// Special handling for members
+					// Membership update rules:
+					//  - First member is the original creator and must remain creator and remain in list
+					//  - Multiple creators allowed; only creators can create additional creators
+					//  - Only the original creator can demote or remove another creator
+					//  - Creators (any) can promote participant->admin or participant->creator, admin->creator
+					//  - Admins may add/remove participants and demote admin->participant but cannot promote or touch any creator
 					const incoming = body.members ?? []
 					if (incoming.length === 0) { return reject('Members array cannot be empty') }
-					// Enforce first existing member is preserved (posting creator)
 					const originalFirst = event.members[0]
 					const incomingFirst = incoming[0]
 					if (originalFirst.userId.toString() !== incomingFirst.userId.toString() || incomingFirst.role !== 'creator') {
 						return reject('First member must remain the original creator')
 					}
+					// Build lookup of existing roles
+					const existingRoleById = new Map(event.members.map(m => [m.userId.toString(), m.role]))
+					// Track IDs of incoming to detect removals
+					const incomingIds = new Set(incoming.map(m => m.userId.toString()))
+					// Validate removals: original creator cannot be removed; only original creator may remove other creators
+					for (const prev of event.members) {
+						const prevId = prev.userId.toString()
+						if (!incomingIds.has(prevId)) {
+							if (prevId === originalFirst.userId.toString()) { return reject('Original creator cannot be removed') }
+							if (prev.role === 'creator' && !userIsCreator) { return reject('Only the original creator can remove a creator') }
+						}
+					}
+					for (let i = 1; i < incoming.length; i++) {
+						const m = incoming[i]
+						const existingRole = existingRoleById.get(m.userId.toString())
+						if (!userIsCreator) {
+							// Acting user is admin
+							if (m.role === 'creator') { return reject('Admins cannot assign creator role') }
+							if (existingRole === 'creator') { return reject('Admins cannot modify creator roles') }
+							if (existingRole == null) {
+								if (m.role != null && m.role !== 'participant') { return reject('Admins can only add new members as participants') }
+							} else if (m.role !== existingRole) {
+								if (!(existingRole === 'admin' && m.role === 'participant')) { return reject('Admins can only demote admin to participant') }
+							}
+						} else {
+							// Acting user is a creator. If not original creator, limit ability to demote/remove other creators.
+							const isOriginalCreator = user.id === originalFirst.userId.toString()
+							if (!isOriginalCreator) {
+								if (existingRole === 'creator' && m.role !== 'creator') { return reject('Only original creator can demote another creator') }
+							}
+						}
+					}
+					// Sanitization: ensure roles for non-creator entries default to participant if omitted
 					const sanitized: IMember[] = incoming.map((m, idx) => ({
 						userId: m.userId,
 						role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
@@ -363,7 +403,7 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					}))
 					event.set('members', sanitized)
 					updateApplied = true
-					logger.debug(`Updating members (sanitized & first locked) for event ID ${eventId}`)
+					logger.debug(`Updating members (role rules enforced) for event ID ${eventId}`)
 				} else {
 					// For other fields, just set directly
 					event.set(f, body[f])
@@ -586,16 +626,67 @@ export async function updateParticipantRole (req: Request, res: Response, next: 
 
 		const targetParticipant = event.members[memberIndex]
 
-		// Only creators can modify creator roles
-		if ((newRole === 'creator' || targetParticipant.role === 'creator') && !userIsCreator) {
-			logger.warn(`Update participant role failed: User ${user.id} cannot modify creator role in event ${eventId}`)
-			res.status(403).json({ error: 'Only creators can modify creator roles' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
+		// Role change rules with multiple creators:
+		//  - First member is original creator (immutable, cannot change role)
+		//  - Multiple creators allowed (creator can promote to creator)
+		//  - Only original creator can demote or remove another creator
+		//  - Any creator can promote participant/admin -> creator
+		//  - Any creator can promote participant -> admin
+		//  - Admin can only demote admin -> participant or keep same; cannot touch creators or promote
+		const originalFirst = event.members[0]
+		const isOriginalCreator = originalFirst.userId.toString() === user.id
+		if (targetParticipant.userId.toString() === originalFirst.userId.toString()) {
+			// Original creator role immutable
+			if (newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Attempt to change original creator role for event ${eventId}`)
+				res.status(400).json({ error: 'Original creator role cannot be changed' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else if (targetParticipant.role === 'creator') {
+			// Changing a (non-original) creator
+			if (!isOriginalCreator && newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Non-original creator ${user.id} attempted to demote another creator in event ${eventId}`)
+				res.status(403).json({ error: 'Only the original creator can demote another creator' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+			if (!userIsCreator && newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted to modify creator in event ${eventId}`)
+				res.status(403).json({ error: 'Admins cannot modify creator roles' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else if (!userIsCreator) {
+			// Acting user is admin on non-creator target
+			if (newRole === 'creator' || newRole === 'admin') {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted promotion to ${newRole} in event ${eventId}`)
+				res.status(403).json({ error: 'Admins cannot promote members' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+			if (targetParticipant.role === 'admin' && newRole === 'participant') {
+				// Allowed demotion
+			} else if (targetParticipant.role !== newRole) {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted forbidden role change ${targetParticipant.role} -> ${newRole} in event ${eventId}`)
+				res.status(403).json({ error: 'Admins can only demote admin to participant' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else {
+			// Acting user is a creator modifying non-creator target; promotions allowed
+			// No extra validation needed beyond above
 		}
 
-		event.members[memberIndex].role = newRole
+		// Apply role (idempotent allowed cases)
+		if (event.members[memberIndex].role !== newRole) {
+			event.members[memberIndex].role = newRole
+		}
 		await event.validate()
 		await event.save({ session })
 		await session.commitTransaction()
