@@ -86,7 +86,7 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		preferredTimes,
 		dailyStartConstraints,
 		status: requestedStatus,
-		visibility,
+		visibility: requestedVisibility,
 		scheduledTime
 	} = req.body as Partial<IEvent>
 
@@ -129,6 +129,13 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 			} else {
 				res.status(400).json({ error: 'timeWindow is required unless creating a confirmed event with scheduledTime' }); return
 			}
+		}
+
+		// visibility rules: default draft; only allow draft|public|private
+		let visibility: IEvent['visibility'] = 'draft'
+		if (requestedVisibility != null) {
+			if (!['draft', 'public', 'private'].includes(requestedVisibility)) { res.status(400).json({ error: 'Invalid visibility value' }); return }
+			visibility = requestedVisibility as IEvent['visibility']
 		}
 
 		const eventData: Partial<IEvent> = {
@@ -257,60 +264,77 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		}
 
 		const current = event.status
-		if (requestedStatus !== undefined) {
-			// Validate transitions against current status and scheduledTime
+		let statusChangeAllowed = false
+		let updateApplied = false
+		// Validate status transitions when a status change is requested OR when scheduledTime is being modified without a status change
+		if (requestedStatus !== undefined || body.scheduledTime !== undefined) {
 			switch (current) {
 				case 'scheduling': {
-					// Scheduling can transition to:
-					// Scheduling if no scheduledTime set
-					// Confirmed if scheduledTime set
-					// Cancelled always
-					if (requestedStatus === undefined || requestedStatus === 'scheduling') {
-						if (scheduledTime != null) { await reject('scheduledTime must not be set when in scheduling'); return }
+					if (requestedStatus === undefined) {
+						// No explicit status change; scheduledTime not allowed
+						if (body.scheduledTime !== undefined) { await reject('scheduledTime must not be set when in scheduling'); return }
 						break
+					}
+					if (requestedStatus === 'scheduling') {
+						if (scheduledTime != null) { await reject('scheduledTime must not be set when in scheduling'); return }
 					} else if (requestedStatus === 'confirmed') {
 						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
-						break
 					} else if (requestedStatus === 'cancelled') {
-						break
+						// always allowed
 					} else {
 						await reject(`Invalid status transition from scheduling to ${requestedStatus}`); return
 					}
 					break
 				}
 				case 'scheduled': {
-					// Scheduled can transition to:
-					// Scheduled if scheduledTime is set
-					// Confirmed if scheduledTime is set
-					// Cancelled always
-					if (requestedStatus === undefined || requestedStatus === 'scheduled') {
-						if (scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
+					if (requestedStatus === undefined) {
+						// Only allow scheduledTime presence if it remains set (cannot unset)
+						if (body.scheduledTime !== undefined && scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
 						break
+					}
+					if (requestedStatus === 'scheduled') {
+						if (scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
 					} else if (requestedStatus === 'confirmed') {
 						if (scheduledTime == null) { await reject('scheduledTime must be set to confirm scheduled events'); return }
-						break
 					} else if (requestedStatus === 'cancelled') {
-						break
+						// always allowed
 					} else {
 						await reject(`Invalid status transition from scheduled to ${requestedStatus}`); return
 					}
 					break
 				}
 				case 'confirmed': {
-					// Confirmed can only transition to:
-					// Cancelled always
-					// Confirmed if no other fields change
 					if (requestedStatus === undefined || requestedStatus === 'confirmed') {
-						if (scheduledTime != null && scheduledTime !== event.scheduledTime) { await reject('Cannot change scheduledTime after confirmation'); return }
-						break
+						if (body.scheduledTime !== undefined && body.scheduledTime !== event.scheduledTime) { await reject('Cannot change scheduledTime after confirmation'); return }
 					} else if (requestedStatus === 'cancelled') {
-						break
+						// allowed
 					} else {
 						await reject(`Confirmed events can only be cancelled; attempted: ${requestedStatus}`); return
 					}
 					break
 				}
-				// 'cancelled' handled earlier as terminal state
+				// cancelled handled earlier
+			}
+			if (requestedStatus !== undefined) { statusChangeAllowed = true }
+		}
+
+		// Apply status & scheduledTime mutations after validation logic
+		if (requestedStatus !== undefined && statusChangeAllowed) {
+			if (requestedStatus !== event.status) {
+				event.set('status', requestedStatus)
+				updateApplied = true
+			}
+		}
+		// scheduledTime assignment rules:
+		//  - Allow setting scheduledTime when transitioning to confirmed
+		//  - Allow setting scheduledTime for scheduled status (future enhancement if scheduled reintroduced)
+		//  - Prevent modifying scheduledTime once confirmed (already validated above)
+		if (body.scheduledTime !== undefined) {
+			if (event.status === 'confirmed') {
+				// Already enforced earlier; double guard
+			} else {
+				event.set('scheduledTime', body.scheduledTime)
+				updateApplied = true
 			}
 		}
 
@@ -331,7 +355,6 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			if (otherChange) { await reject('Cannot modify confirmed events except to cancel them'); return }
 		}
 
-		let updateApplied = false
 		for (const f of otherFields) {
 			if (body[f] !== undefined) {
 				if (f === 'members') {
