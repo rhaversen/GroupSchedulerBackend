@@ -9,7 +9,7 @@ export interface IMember {
 	userId: Schema.Types.ObjectId
 	role: 'creator' | 'admin' | 'participant'
 	customPaddingAfter?: number
-	availabilityStatus: 'available' | 'unavailable' | 'tentative'
+	availabilityStatus: 'available' | 'unavailable' | 'tentative' | 'invited'
 }
 
 export interface IEvent extends Document {
@@ -61,6 +61,7 @@ export interface IEventFrontend {
 	members: {
 		userId: string
 		role: 'creator' | 'admin' | 'participant'
+		availabilityStatus: 'available' | 'unavailable' | 'tentative' | 'invited'
 	}[]
 
 	duration: number
@@ -122,8 +123,8 @@ const memberSchema = new Schema<IMember>({
 	availabilityStatus: {
 		type: Schema.Types.String,
 		required: true,
-		enum: ['available', 'unavailable', 'tentative'],
-		default: 'tentative'
+		enum: ['available', 'unavailable', 'tentative', 'invited'],
+		default: 'invited'
 	}
 }, { _id: false })
 
@@ -133,7 +134,7 @@ const eventSchema = new Schema<IEvent>({
 		required: true,
 		trim: true,
 		minLength: [1, 'Event name is too short (minimum 1 character)'],
-		maxLength: [100, 'Event name is too long (maximum 100 characters)']
+		maxLength: [50, 'Event name is too long (maximum 50 characters)']
 	},
 	description: {
 		type: Schema.Types.String,

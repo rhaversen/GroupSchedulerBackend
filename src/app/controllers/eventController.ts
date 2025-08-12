@@ -1,7 +1,7 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import mongoose, { FilterQuery } from 'mongoose'
 
-import EventModel, { IEvent, IEventFrontend } from '../models/Event.js'
+import EventModel, { IEvent, IEventFrontend, IMember } from '../models/Event.js'
 import { IUser } from '../models/User.js'
 import logger from '../utils/logger.js'
 
@@ -15,7 +15,8 @@ export async function transformEvent (
 			description: event.description,
 			members: event.members.map(p => ({
 				userId: p.userId.toString(),
-				role: p.role
+				role: p.role,
+				availabilityStatus: p.availabilityStatus
 			})),
 			timeWindow: event.timeWindow,
 			duration: event.duration,
@@ -89,19 +90,67 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		duration,
 		blackoutPeriods,
 		preferredTimes,
-		dailyStartConstraints
-	} = req.body
+		dailyStartConstraints,
+		status: requestedStatus,
+		scheduledTime
+	} = req.body as Partial<IEvent>
 
 	try {
+		let status: IEvent['status'] = 'draft'
+		// Creation rules: allow draft ALWAYS, allow scheduling ONLY without scheduledTime, allow confirmed ONLY with scheduledTime
+		if (requestedStatus != null) {
+			if (requestedStatus === 'draft') {
+				status = 'draft'
+			} else if (requestedStatus === 'scheduling') {
+				if (scheduledTime != null) {
+					res.status(400).json({ error: 'Cannot set scheduledTime when status is scheduling on creation' }); return
+				}
+				status = 'scheduling'
+			} else if (requestedStatus === 'confirmed') {
+				if (scheduledTime == null) { res.status(400).json({ error: 'scheduledTime required when creating a confirmed event' }); return }
+				status = 'confirmed'
+			} else {
+				res.status(400).json({ error: `Status '${requestedStatus}' not allowed at creation` }); return
+			}
+		}
+
+		// Build members list and enforce first member is posting user as creator
+		let rawMembers = members ?? [{ userId: user._id, role: 'creator' }]
+		if (rawMembers.length === 0) { rawMembers = [{ userId: user._id, role: 'creator' }] }
+		const first = rawMembers[0]
+		if (first.userId.toString() !== user._id.toString() || first.role !== 'creator') {
+			res.status(400).json({ error: 'First member must be the posting user with role creator' }); return
+		}
+		const sanitizedMembers: IMember[] = rawMembers.map((m, idx) => ({
+			userId: m.userId,
+			role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+			availabilityStatus: 'invited'
+		}))
+
+		let effectiveTimeWindow = timeWindow
+		if (effectiveTimeWindow == null) {
+			if (status === 'confirmed') {
+				if (scheduledTime == null || duration == null) { res.status(400).json({ error: 'scheduledTime and duration required for confirmed event' }); return }
+				effectiveTimeWindow = undefined
+			} else {
+				res.status(400).json({ error: 'timeWindow is required unless creating a confirmed event with scheduledTime' }); return
+			}
+		}
+
 		const eventData: Partial<IEvent> = {
 			name,
 			description,
-			members: members ?? [{ userId: user._id, role: 'creator', availabilityStatus: 'available' }],
-			timeWindow,
+			members: sanitizedMembers,
+			timeWindow: effectiveTimeWindow,
 			duration,
 			blackoutPeriods: blackoutPeriods ?? [],
 			preferredTimes,
-			dailyStartConstraints
+			dailyStartConstraints,
+			status
+		}
+		if (status === 'confirmed' && scheduledTime != null) {
+			// only confirmed may carry scheduledTime on create per above logic
+			eventData.scheduledTime = scheduledTime
 		}
 
 		const newEvent = await EventModel.create(eventData)
@@ -185,23 +234,149 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (event.status === 'confirmed') {
-			logger.warn(`Update event failed: Event ${eventId} is confirmed and cannot be modified`)
-			res.status(400).json({ error: 'Cannot modify confirmed events' })
+		// Terminal state: cancelled
+		if (event.status === 'cancelled') {
+			logger.warn(`Update event failed: Event ${eventId} is cancelled and cannot be modified`)
+			res.status(400).json({ error: 'Cannot modify cancelled events' })
 			await session.abortTransaction()
 			await session.endSession()
 			return
 		}
 
-		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
+		const body = req.body as Partial<IEvent>
+		const requestedStatus = body.status
+		const scheduledTime = body.scheduledTime ?? event.scheduledTime
 
-		for (const field of updatableFields) {
-			if (req.body[field] !== undefined) {
-				event.set(field, req.body[field])
-				updateApplied = true
-				logger.debug(`Updating ${field} for event ID ${eventId}`)
+		// Collect other (non status/time) fields to update after validation
+		const otherFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'public', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
+		let statusToApply: IEvent['status'] | undefined
+
+		async function reject (message: string): Promise<void> {
+			logger.warn(`Update event failed validation for ${eventId}: ${message}`)
+			await session.abortTransaction()
+			await session.endSession()
+			res.status(400).json({ error: message })
+		}
+
+		const current = event.status
+		if (requestedStatus !== undefined) {
+			// Validate transitions against current status and scheduledTime
+			switch (current) {
+				case 'draft': {
+					// Draft can transition to:
+					// Draft always
+					// Scheduling if scheduledTime is not set
+					// Confirmed if scheduledTime is set
+					// Cancelled always
+					if (requestedStatus === undefined || requestedStatus === 'draft') {
+						statusToApply = current
+					} else if (requestedStatus === 'scheduling') {
+						if (scheduledTime != null) { await reject('scheduledTime must not be set when moving to scheduling'); return }
+						statusToApply = 'scheduling'
+					} else if (requestedStatus === 'confirmed') {
+						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
+						statusToApply = 'confirmed'
+					} else if (requestedStatus === 'cancelled') {
+						statusToApply = 'cancelled'
+					} else {
+						await reject(`Invalid status transition from draft to ${requestedStatus}`); return
+					}
+					break
+				}
+				case 'scheduling': {
+					// Scheduling can transition to:
+					// Scheduling if no scheduledTime set
+					// Confirmed if scheduledTime set
+					// Cancelled always
+					if (requestedStatus === undefined || requestedStatus === 'scheduling') {
+						if (scheduledTime != null) { await reject('scheduledTime must not be set when in scheduling'); return }
+						statusToApply = 'scheduling'
+					} else if (requestedStatus === 'confirmed') {
+						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
+						statusToApply = 'confirmed'
+					} else if (requestedStatus === 'cancelled') {
+						statusToApply = 'cancelled'
+					} else {
+						await reject(`Invalid status transition from scheduling to ${requestedStatus}`); return
+					}
+					break
+				}
+				case 'scheduled': {
+					// Scheduled can transition to:
+					// Scheduled if scheduledTime is set
+					// Confirmed if scheduledTime is set
+					// Cancelled always
+					if (requestedStatus === undefined || requestedStatus === 'scheduled') {
+						if (scheduledTime == null) { return reject('scheduledTime must be set for scheduled events') }
+						statusToApply = 'scheduled'
+					} else if (requestedStatus === 'confirmed') {
+						if (scheduledTime == null) { return reject('scheduledTime must be set to confirm scheduled events') }
+						statusToApply = 'confirmed'
+					} else if (requestedStatus === 'cancelled') {
+						statusToApply = 'cancelled'
+					} else {
+						return reject(`Invalid status transition from scheduled to ${requestedStatus}`)
+					}
+					break
+				}
+				case 'confirmed': {
+					// Confirmed can only transition to:
+					// Cancelled always
+					// Confirmed if no other fields change
+					if (requestedStatus === undefined || requestedStatus === 'confirmed') {
+						if (scheduledTime != null && scheduledTime !== event.scheduledTime) { return reject('Cannot change scheduledTime after confirmation') }
+						statusToApply = 'confirmed'
+					} else if (requestedStatus === 'cancelled') {
+						statusToApply = 'cancelled'
+					} else {
+						return reject(`Confirmed events can only be cancelled; attempted: ${requestedStatus}`)
+					}
+					break
+				}
+				// 'cancelled' handled earlier as terminal state
 			}
+		}
+
+		// If confirmed and not cancelling, restrict other field modifications
+		if (event.status === 'confirmed' && statusToApply !== 'cancelled') {
+			const otherChange = otherFields.some(f => body[f] !== undefined)
+			if (otherChange) { return reject('Cannot modify confirmed events except to cancel them') }
+		}
+
+		let updateApplied = false
+		for (const f of otherFields) {
+			if (body[f] !== undefined) {
+				if (f === 'members') {
+					// Special handling for members
+					const incoming = body.members ?? []
+					if (incoming.length === 0) { return reject('Members array cannot be empty') }
+					// Enforce first existing member is preserved (posting creator)
+					const originalFirst = event.members[0]
+					const incomingFirst = incoming[0]
+					if (originalFirst.userId.toString() !== incomingFirst.userId.toString() || incomingFirst.role !== 'creator') {
+						return reject('First member must remain the original creator')
+					}
+					const sanitized: IMember[] = incoming.map((m, idx) => ({
+						userId: m.userId,
+						role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+						availabilityStatus: 'invited'
+					}))
+					event.set('members', sanitized)
+					updateApplied = true
+					logger.debug(`Updating members (sanitized & first locked) for event ID ${eventId}`)
+				} else {
+					// For other fields, just set directly
+					event.set(f, body[f])
+					updateApplied = true
+					logger.debug(`Updating ${f} for event ID ${eventId}`)
+				}
+			}
+		}
+
+		if (statusToApply !== undefined && statusToApply !== event.status) {
+			event.status = statusToApply
+			updateApplied = true
+			logger.debug(`Updating status -> ${statusToApply} for event ID ${eventId}`)
 		}
 
 		if (!updateApplied) {

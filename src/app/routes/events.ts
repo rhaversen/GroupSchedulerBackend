@@ -22,14 +22,13 @@ const router = Router()
  * @access Private
  * @param {string} req.body.name - The name of the event.
  * @param {string} req.body.description - The description of the event.
- * @param {Object[]} [req.body.members] - Array of member objects with userId, role, and settings (optional, defaults to creator).
+ * @param {Object[]} [req.body.members] - Array of member objects with userId and role (optional). First element MUST be posting user with role 'creator'. Availability & padding ignored here.
  * @param {string} req.body.members[].userId - User ID of the participant.
  * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
- * @param {Object} req.body.timeWindow - Time window for the event.
- * @param {number} req.body.timeWindow.start - Start time (Unix ms).
- * @param {number} req.body.timeWindow.end - End time (Unix ms).
+ * NOTE: customPaddingAfter and availabilityStatus (including 'invited') cannot be set on creation; defaults to 'invited' until user updates via settings endpoint.
+ * @param {Object} [req.body.timeWindow] - Time window for the event. Required unless creating a confirmed event with scheduledTime (then derived from scheduledTime+duration).
+ * @param {number} [req.body.timeWindow.start] - Start time (Unix ms).
+ * @param {number} [req.body.timeWindow.end] - End time (Unix ms).
  * @param {number} req.body.duration - Duration in milliseconds.
  * @param {boolean} [req.body.public] - Whether the event is public (optional, defaults to false).
  * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
@@ -123,11 +122,10 @@ router.get('/:id',
  * @param {string} req.params.id - The ID of the event.
  * @param {string} [req.body.name] - The new name (optional).
  * @param {string} [req.body.description] - The new description (optional).
- * @param {Object[]} [req.body.members] - Array of participant objects with userId, role, and settings (optional).
+ * @param {Object[]} [req.body.members] - Array of participant objects with userId and role only (availability & padding ignored). First element MUST remain the original creator.
  * @param {string} req.body.members[].userId - User ID of the participant.
  * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
+ * NOTE: customPaddingAfter and availabilityStatus (including 'invited') cannot be modified via this route; use /:eventId/settings as the participant.
  * @param {Object} [req.body.timeWindow] - Time window for the event (optional).
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
@@ -164,7 +162,7 @@ router.delete('/:id',
  * @access Private (members only)
  * @param {string} req.params.eventId - The ID of the event.
  * @param {number} [req.body.customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.availabilityStatus] - Availability status: 'available', 'unavailable', 'tentative' (optional).
+ * @param {string} [req.body.availabilityStatus] - Availability status: 'invited', 'available', 'unavailable', 'tentative' (optional).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated user event settings object.
  */
