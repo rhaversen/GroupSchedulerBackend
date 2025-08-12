@@ -22,7 +22,7 @@ describe('Event Model', function () {
 			start: number
 			end: number
 		}
-		public: boolean
+		visibility: 'draft' | 'public' | 'private'
 	}
 
 	beforeEach(async function () {
@@ -48,7 +48,7 @@ describe('Event Model', function () {
 				start: futureStart,
 				end: futureEnd
 			},
-			public: false
+			visibility: 'draft'
 		}
 	})
 
@@ -62,8 +62,8 @@ describe('Event Model', function () {
 			expect(event.members[0].userId.toString()).to.equal(testUser._id.toString())
 			expect(event.members[0].role).to.equal('creator')
 			expect(event.duration).to.equal(testEventFields.duration)
-			expect(event.status).to.equal('draft')
-			expect(event.public).to.be.false
+			expect(event.status).to.equal('scheduling')
+			expect(event.visibility).to.equal('draft')
 			expect(event.blackoutPeriods).to.be.an('array').that.is.empty
 		})
 
@@ -83,17 +83,17 @@ describe('Event Model', function () {
 			expect(event.description).to.equal('Trimmed description')
 		})
 
-		it('should default status to draft', async function () {
+		it('should default status to scheduling', async function () {
 			const event = await EventModel.create(testEventFields)
-			expect(event.status).to.equal('draft')
+			expect(event.status).to.equal('scheduling')
 		})
 
-		it('should default public to false', async function () {
+		it('should default visibility to draft', async function () {
 			const event = await EventModel.create({
 				...testEventFields,
-				public: undefined
+				visibility: undefined
 			})
-			expect(event.public).to.be.false
+			expect(event.visibility).to.equal('draft')
 		})
 	})
 
@@ -478,7 +478,7 @@ describe('Event Model', function () {
 			expect(participant!.role).to.equal('participant')
 		})
 
-		it('should default availability status to tentative', async function () {
+		it('should default availability status to invited', async function () {
 			const event = await EventModel.create({
 				...testEventFields,
 				members: [{
@@ -487,7 +487,7 @@ describe('Event Model', function () {
 				}]
 			})
 
-			expect(event.members[0].availabilityStatus).to.equal('tentative')
+			expect(event.members[0].availabilityStatus).to.equal('invited')
 		})
 	})
 })
