@@ -46,8 +46,8 @@ export interface IEvent extends Document {
 	blackoutPeriods?: ITimeRange[]
 	/** Preferred times for the event */
 	preferredTimes?: ITimeRange[]
-	/** Intra-day constraint on valid start times. */
-	dailyStartConstraint: number
+	/** Intra-day start constraint for the event, in minutes of the day */
+	dailyStartConstraints?: ITimeRange[]
 
 	createdAt: Date
 	updatedAt: Date
@@ -76,8 +76,7 @@ export interface IEventFrontend {
 
 	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
-
-	dailyStartConstraint: number
+	dailyStartConstraints?: ITimeRange[]
 
 	createdAt: Date
 	updatedAt: Date
@@ -203,12 +202,7 @@ const eventSchema = new Schema<IEvent>({
 	},
 	blackoutPeriods: [timeRangeSchema],
 	preferredTimes: [timeRangeSchema],
-	dailyStartConstraint: {
-		type: Schema.Types.Number,
-		required: true,
-		min: [0, 'dailyStartConstraint must be >= 0'],
-		max: [1439, 'dailyStartConstraint must be <= 1439']
-	}
+	dailyStartConstraints: [timeRangeSchema]
 }, {
 	timestamps: true
 })
