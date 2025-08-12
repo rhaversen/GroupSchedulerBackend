@@ -353,8 +353,8 @@ describe('Event Model', function () {
 				]
 			})
 			expect(event.blackoutPeriods).to.have.lengthOf(2)
-			expect(event.blackoutPeriods[0].start).to.equal(100)
-			expect(event.blackoutPeriods[0].end).to.equal(200)
+			expect(event.blackoutPeriods![0].start).to.equal(100)
+			expect(event.blackoutPeriods![0].end).to.equal(200)
 		})
 
 		it('should allow valid preferred times', async function () {

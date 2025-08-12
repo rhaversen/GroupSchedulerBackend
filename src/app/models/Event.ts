@@ -43,7 +43,7 @@ export interface IEvent extends Document {
 	public: boolean
 
 	/** Blackout periods where the event cannot be scheduled */
-	blackoutPeriods: ITimeRange[]
+	blackoutPeriods?: ITimeRange[]
 	/** Preferred times for the event */
 	preferredTimes?: ITimeRange[]
 
@@ -72,7 +72,7 @@ export interface IEventFrontend {
 
 	public: boolean
 
-	blackoutPeriods: ITimeRange[]
+	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
 
 	createdAt: Date
