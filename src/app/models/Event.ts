@@ -34,13 +34,13 @@ export interface IEvent extends Document {
 		end: number
 	}
 
-	/** Status of the event */
-	status: 'draft' | 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
+	/** Lifecycle status of the event */
+	status: 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
 	/** The current scheduled time for the event, if any */
 	scheduledTime?: number
 
-	/** Whether the event is public and can be found by any user */
-	public: boolean
+	/** Visibility of the event */
+	visibility: 'draft' | 'public' | 'private'
 
 	/** Blackout periods where the event cannot be scheduled */
 	blackoutPeriods?: ITimeRange[]
@@ -70,10 +70,10 @@ export interface IEventFrontend {
 		end: number
 	}
 
-	status: 'draft' | 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
+	status: 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
 	scheduledTime?: number
 
-	public: boolean
+	visibility: 'draft' | 'public' | 'private'
 
 	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
@@ -181,13 +181,14 @@ const eventSchema = new Schema<IEvent>({
 	status: {
 		type: Schema.Types.String,
 		required: true,
-		enum: ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled'],
-		default: 'draft'
+		enum: ['scheduling', 'scheduled', 'confirmed', 'cancelled'],
+		default: 'scheduling'
 	},
-	public: {
-		type: Schema.Types.Boolean,
+	visibility: {
+		type: Schema.Types.String,
 		required: true,
-		default: false
+		enum: ['draft', 'public', 'private'],
+		default: 'draft'
 	},
 	scheduledTime: {
 		type: Schema.Types.Number,

@@ -22,7 +22,7 @@ export async function transformEvent (
 			duration: event.duration,
 			status: event.status,
 			scheduledTime: event.scheduledTime,
-			public: event.public,
+			visibility: event.visibility,
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
 			dailyStartConstraints: event.dailyStartConstraints,
@@ -48,28 +48,22 @@ function isEventParticipant (event: IEvent, userId: string): boolean {
 }
 
 function canAccessEvent (event: IEvent, userId?: string): boolean {
-	// If event is public and not a draft, anyone can access it
-	if (event.public && event.status !== 'draft') {
-		return true
-	}
+	// Public visibility: anyone can access
+	if (event.visibility === 'public') { return true }
 
-	// If no user ID provided, can't access private events
-	if (userId === undefined) {
-		return false
-	}
-
-	// For private events, user must be a participant
-	if (!isEventParticipant(event, userId)) {
-		return false
-	}
-
-	// For draft events, only admins and creators can access
-	if (event.status === 'draft') {
+	// Draft visibility: only admins/creators (must be authenticated)
+	if (event.visibility === 'draft') {
+		if (userId == null) { return false }
 		return isEventAdmin(event, userId) || isEventCreator(event, userId)
 	}
 
-	// For non-draft private events, any participant can access
-	return true
+	// Private visibility: must be participant
+	if (event.visibility === 'private') {
+		if (userId == null) { return false }
+		return isEventParticipant(event, userId)
+	}
+
+	return false
 }
 
 export async function createEvent (req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -92,20 +86,20 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		preferredTimes,
 		dailyStartConstraints,
 		status: requestedStatus,
+		visibility,
 		scheduledTime
 	} = req.body as Partial<IEvent>
 
 	try {
-		let status: IEvent['status'] = 'draft'
-		// Creation rules: allow draft ALWAYS, allow scheduling ONLY without scheduledTime, allow confirmed ONLY with scheduledTime
+		let status: IEvent['status'] = 'scheduling'
+		// Creation rules: scheduling default; confirmed only with scheduledTime; scheduled requires scheduledTime present; cannot create cancelled
 		if (requestedStatus != null) {
-			if (requestedStatus === 'draft') {
-				status = 'draft'
-			} else if (requestedStatus === 'scheduling') {
-				if (scheduledTime != null) {
-					res.status(400).json({ error: 'Cannot set scheduledTime when status is scheduling on creation' }); return
-				}
+			if (requestedStatus === 'scheduling') {
+				if (scheduledTime != null) { res.status(400).json({ error: 'scheduledTime must be absent when creating a scheduling event' }); return }
 				status = 'scheduling'
+			} else if (requestedStatus === 'scheduled') {
+				if (scheduledTime == null) { res.status(400).json({ error: 'scheduledTime required when creating a scheduled event' }); return }
+				status = 'scheduled'
 			} else if (requestedStatus === 'confirmed') {
 				if (scheduledTime == null) { res.status(400).json({ error: 'scheduledTime required when creating a confirmed event' }); return }
 				status = 'confirmed'
@@ -146,7 +140,8 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 			blackoutPeriods: blackoutPeriods ?? [],
 			preferredTimes,
 			dailyStartConstraints,
-			status
+			status,
+			visibility
 		}
 		if (status === 'confirmed' && scheduledTime != null) {
 			// only confirmed may carry scheduledTime on create per above logic
@@ -248,11 +243,11 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 
 		const body = req.body as Partial<IEvent>
 		const requestedStatus = body.status
+		const requestedVisibility = body.visibility
 		const scheduledTime = body.scheduledTime ?? event.scheduledTime
 
 		// Collect other (non status/time) fields to update after validation
-		const otherFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'public', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
-		let statusToApply: IEvent['status'] | undefined
+		const otherFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'visibility', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
 
 		async function reject (message: string): Promise<void> {
 			logger.warn(`Update event failed validation for ${eventId}: ${message}`)
@@ -265,27 +260,6 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 		if (requestedStatus !== undefined) {
 			// Validate transitions against current status and scheduledTime
 			switch (current) {
-				case 'draft': {
-					// Draft can transition to:
-					// Draft always
-					// Scheduling if scheduledTime is not set
-					// Confirmed if scheduledTime is set
-					// Cancelled always
-					if (requestedStatus === undefined || requestedStatus === 'draft') {
-						statusToApply = current
-					} else if (requestedStatus === 'scheduling') {
-						if (scheduledTime != null) { await reject('scheduledTime must not be set when moving to scheduling'); return }
-						statusToApply = 'scheduling'
-					} else if (requestedStatus === 'confirmed') {
-						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
-						statusToApply = 'confirmed'
-					} else if (requestedStatus === 'cancelled') {
-						statusToApply = 'cancelled'
-					} else {
-						await reject(`Invalid status transition from draft to ${requestedStatus}`); return
-					}
-					break
-				}
 				case 'scheduling': {
 					// Scheduling can transition to:
 					// Scheduling if no scheduledTime set
@@ -293,12 +267,12 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					// Cancelled always
 					if (requestedStatus === undefined || requestedStatus === 'scheduling') {
 						if (scheduledTime != null) { await reject('scheduledTime must not be set when in scheduling'); return }
-						statusToApply = 'scheduling'
+						break
 					} else if (requestedStatus === 'confirmed') {
 						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
-						statusToApply = 'confirmed'
+						break
 					} else if (requestedStatus === 'cancelled') {
-						statusToApply = 'cancelled'
+						break
 					} else {
 						await reject(`Invalid status transition from scheduling to ${requestedStatus}`); return
 					}
@@ -310,15 +284,15 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					// Confirmed if scheduledTime is set
 					// Cancelled always
 					if (requestedStatus === undefined || requestedStatus === 'scheduled') {
-						if (scheduledTime == null) { return reject('scheduledTime must be set for scheduled events') }
-						statusToApply = 'scheduled'
+						if (scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
+						break
 					} else if (requestedStatus === 'confirmed') {
-						if (scheduledTime == null) { return reject('scheduledTime must be set to confirm scheduled events') }
-						statusToApply = 'confirmed'
+						if (scheduledTime == null) { await reject('scheduledTime must be set to confirm scheduled events'); return }
+						break
 					} else if (requestedStatus === 'cancelled') {
-						statusToApply = 'cancelled'
+						break
 					} else {
-						return reject(`Invalid status transition from scheduled to ${requestedStatus}`)
+						await reject(`Invalid status transition from scheduled to ${requestedStatus}`); return
 					}
 					break
 				}
@@ -327,12 +301,12 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					// Cancelled always
 					// Confirmed if no other fields change
 					if (requestedStatus === undefined || requestedStatus === 'confirmed') {
-						if (scheduledTime != null && scheduledTime !== event.scheduledTime) { return reject('Cannot change scheduledTime after confirmation') }
-						statusToApply = 'confirmed'
+						if (scheduledTime != null && scheduledTime !== event.scheduledTime) { await reject('Cannot change scheduledTime after confirmation'); return }
+						break
 					} else if (requestedStatus === 'cancelled') {
-						statusToApply = 'cancelled'
+						break
 					} else {
-						return reject(`Confirmed events can only be cancelled; attempted: ${requestedStatus}`)
+						await reject(`Confirmed events can only be cancelled; attempted: ${requestedStatus}`); return
 					}
 					break
 				}
@@ -340,10 +314,21 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			}
 		}
 
+		// Visibility transition rules:
+		// draft -> public | private | draft
+		// public <-> private
+		if (requestedVisibility !== undefined) {
+			if (event.visibility === 'public' || event.visibility === 'private') {
+				if (requestedVisibility === 'draft') {
+					await reject('Cannot revert to draft visibility once changed from public/private')
+				}
+			}
+		}
+
 		// If confirmed and not cancelling, restrict other field modifications
-		if (event.status === 'confirmed' && statusToApply !== 'cancelled') {
+		if (event.status === 'confirmed' && requestedStatus !== 'cancelled') {
 			const otherChange = otherFields.some(f => body[f] !== undefined)
-			if (otherChange) { return reject('Cannot modify confirmed events except to cancel them') }
+			if (otherChange) { await reject('Cannot modify confirmed events except to cancel them'); return }
 		}
 
 		let updateApplied = false
@@ -357,11 +342,11 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					//  - Creators (any) can promote participant->admin or participant->creator, admin->creator
 					//  - Admins may add/remove participants and demote admin->participant but cannot promote or touch any creator
 					const incoming = body.members ?? []
-					if (incoming.length === 0) { return reject('Members array cannot be empty') }
+					if (incoming.length === 0) { await reject('Members array cannot be empty'); return }
 					const originalFirst = event.members[0]
 					const incomingFirst = incoming[0]
 					if (originalFirst.userId.toString() !== incomingFirst.userId.toString() || incomingFirst.role !== 'creator') {
-						return reject('First member must remain the original creator')
+						await reject('First member must remain the original creator'); return
 					}
 					// Build lookup of existing roles
 					const existingRoleById = new Map(event.members.map(m => [m.userId.toString(), m.role]))
@@ -371,8 +356,8 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					for (const prev of event.members) {
 						const prevId = prev.userId.toString()
 						if (!incomingIds.has(prevId)) {
-							if (prevId === originalFirst.userId.toString()) { return reject('Original creator cannot be removed') }
-							if (prev.role === 'creator' && !userIsCreator) { return reject('Only the original creator can remove a creator') }
+							if (prevId === originalFirst.userId.toString()) { await reject('Original creator cannot be removed'); return }
+							if (prev.role === 'creator' && !userIsCreator) { await reject('Only the original creator can remove a creator'); return }
 						}
 					}
 					for (let i = 1; i < incoming.length; i++) {
@@ -380,18 +365,18 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 						const existingRole = existingRoleById.get(m.userId.toString())
 						if (!userIsCreator) {
 							// Acting user is admin
-							if (m.role === 'creator') { return reject('Admins cannot assign creator role') }
-							if (existingRole === 'creator') { return reject('Admins cannot modify creator roles') }
+							if (m.role === 'creator') { await reject('Admins cannot assign creator role'); return }
+							if (existingRole === 'creator') { await reject('Admins cannot modify creator roles'); return }
 							if (existingRole == null) {
-								if (m.role != null && m.role !== 'participant') { return reject('Admins can only add new members as participants') }
+								if (m.role != null && m.role !== 'participant') { await reject('Admins can only add new members as participants'); return }
 							} else if (m.role !== existingRole) {
-								if (!(existingRole === 'admin' && m.role === 'participant')) { return reject('Admins can only demote admin to participant') }
+								if (!(existingRole === 'admin' && m.role === 'participant')) { await reject('Admins can only demote admin to participant'); return }
 							}
 						} else {
 							// Acting user is a creator. If not original creator, limit ability to demote/remove other creators.
 							const isOriginalCreator = user.id === originalFirst.userId.toString()
 							if (!isOriginalCreator) {
-								if (existingRole === 'creator' && m.role !== 'creator') { return reject('Only original creator can demote another creator') }
+								if (existingRole === 'creator' && m.role !== 'creator') { await reject('Only original creator can demote another creator'); return }
 							}
 						}
 					}
@@ -411,12 +396,6 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 					logger.debug(`Updating ${f} for event ID ${eventId}`)
 				}
 			}
-		}
-
-		if (statusToApply !== undefined && statusToApply !== event.status) {
-			event.status = statusToApply
-			updateApplied = true
-			logger.debug(`Updating status -> ${statusToApply} for event ID ${eventId}`)
 		}
 
 		if (!updateApplied) {
@@ -493,9 +472,10 @@ export async function deleteEvent (req: Request, res: Response, next: NextFuncti
 	}
 }
 
-interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; public?: boolean; status?: string[]; limit: number; offset: number }
+interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; visibility?: string[]; status?: string[]; limit: number; offset: number }
 interface IGetEventsResponse { events: IEventFrontend[]; total: number }
-const VALID_STATUSES = ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled']
+const VALID_STATUSES = ['scheduling', 'scheduled', 'confirmed', 'cancelled']
+const VALID_VISIBILITY = ['draft', 'public', 'private']
 
 export async function getEvents (req: Request, res: Response, next: NextFunction): Promise<void> {
 	logger.debug('Getting events with query', { query: req.query })
@@ -505,7 +485,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf,
 			participantOf,
 			memberOf,
-			public: publicFlag,
+			visibility: visibilityParam,
 			status,
 			limit,
 			offset
@@ -519,7 +499,11 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf: takeFirst(adminOf),
 			participantOf: takeFirst(participantOf),
 			memberOf: takeFirst(memberOf),
-			public: (() => { const v = takeFirst(publicFlag); if (v === 'true') { return true } if (v === 'false') { return false } return undefined })(),
+			visibility: (() => {
+				const raw = parseIds(visibilityParam)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
+				const filtered = raw?.filter(s => VALID_VISIBILITY.includes(s))
+				return filtered && filtered.length ? filtered : undefined
+			})(),
 			status: (() => {
 				const raw = parseIds(status)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
 				const filtered = raw?.filter(s => VALID_STATUSES.includes(s))
@@ -533,7 +517,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		const filter: FilterQuery<IEvent> = {}
 		const and: FilterQuery<IEvent>[] = []
 
-		if (q.public !== undefined) { and.push({ public: q.public }) }
+		if (q.visibility?.length != null) { and.push({ visibility: q.visibility.length === 1 ? q.visibility[0] : { $in: q.visibility } }) }
 		if (q.status?.length != null) { and.push({ status: q.status.length === 1 ? q.status[0] : { $in: q.status } }) }
 
 		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ members: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
@@ -542,15 +526,15 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		if (q.participantOf != null) { and.push(roleMatch(q.participantOf, 'participant')) }
 		if (q.memberOf != null) { and.push({ 'members.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
 
-		const visibility: FilterQuery<IEvent>[] = [{ public: true, status: { $ne: 'draft' } }]
+		const visibilityAccess: FilterQuery<IEvent>[] = [{ visibility: 'public' }]
 		if (viewerId != null) {
 			const vObj = new mongoose.Types.ObjectId(viewerId)
-			visibility.push(
-				{ status: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
-				{ public: false, status: { $ne: 'draft' }, 'members.userId': vObj }
+			visibilityAccess.push(
+				{ visibility: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
+				{ visibility: 'private', 'members.userId': vObj }
 			)
 		}
-		and.push({ $or: visibility })
+		and.push({ $or: visibilityAccess })
 
 		const finalFilter = and.length ? { $and: and } : filter
 

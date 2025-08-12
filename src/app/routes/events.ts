@@ -30,7 +30,7 @@ const router = Router()
  * @param {number} [req.body.timeWindow.start] - Start time (Unix ms).
  * @param {number} [req.body.timeWindow.end] - End time (Unix ms).
  * @param {number} req.body.duration - Duration in milliseconds.
- * @param {boolean} [req.body.public] - Whether the event is public (optional, defaults to false).
+* @param {string} [req.body.visibility] - Visibility of the event: 'draft' | 'public' | 'private' (default 'draft').
  * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
  * @param {Array<{start:number,end:number}>} [req.body.preferredTimes] - Preferred time ranges.
  * @param {Array<{start:number,end:number}>} [req.body.dailyStartConstraints] - Intra-day start time ranges (minutes of day, 0-1440).
@@ -65,11 +65,11 @@ router.post('/',
  *      Return events where this userId appears in members with any role (creator | admin | participant).
  *      (If provided together with createdBy/adminOf/participantOf, intersection semantics apply.)
  *
- *  - public: 'true' | 'false'
- *      Filter by publicity flag.
+*  - visibility: string | string[]
+*      One or multiple visibility values (draft | public | private) (comma-separated or repeated parameter).
  *
- *  - status: string | string[]
- *      One or multiple event status values (draft | scheduling | scheduled | confirmed | cancelled).
+*  - status: string | string[]
+*      One or multiple event status values (scheduling | scheduled | confirmed | cancelled).
  *      Accept either repeated query parameters (?status=a&status=b) or a comma-separated list (?status=a,b).
  *
  *  - limit: number (default 50, max 200)
@@ -86,8 +86,8 @@ router.post('/',
  *
  * Notes:
  *  - Apply authorization constraints before final pagination.
- *  - If both public=true and a non-public-only user filter are given, intersection still applies (likely yielding only public events among that user set).
- *  - For performance, build a compound query using indexes on (public, status), members.userId, members.role, createdBy.
+*  - Draft visibility events returned only to creator/admin. Private events returned only to members. Public events returned to all.
+*  - For performance, ensure indexes on (visibility, status), members.userId, members.role.
  *
  * Example Requests
 	My managed events (creator or admin): choose either two filters or expose a convenience on frontend:
@@ -95,8 +95,8 @@ router.post('/',
 	/api/v1/events?adminOf=ME (Frontend can merge results, or you can first call with memberOf=ME and filter roles client-side.)
 	Events I participate in (non-admin): /api/v1/events?participantOf=ME
 	Any events I am in: /api/v1/events?memberOf=ME
-	Public events: /api/v1/events?public=true&limit=20
-	Public scheduled events: /api/v1/events?public=true&status=scheduled
+	Public events: /api/v1/events?visibility=public&limit=20
+	Public scheduled events: /api/v1/events?visibility=public&status=scheduled
 	Multiple statuses: /api/v1/events?status=scheduled,confirmed
  */
 router.get('/',
@@ -130,9 +130,9 @@ router.get('/:id',
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
  * @param {number} [req.body.duration] - Duration in milliseconds (optional).
- * @param {string} [req.body.status] - Event status ('draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled') (optional).
+* @param {string} [req.body.status] - Event status ('scheduling', 'scheduled', 'confirmed', 'cancelled') (optional).
  * @param {number} [req.body.scheduledTime] - Scheduled time (Unix ms) (optional).
- * @param {boolean} [req.body.public] - Whether the event is public (optional).
+* @param {string} [req.body.visibility] - Visibility ('draft','public','private') (optional; draft cannot be reverted to once changed).
  * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
  * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
  * @param {Array} [req.body.dailyStartConstraints] - Intra-day start time ranges (minutes of day, 0-1440).
