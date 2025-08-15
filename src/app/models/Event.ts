@@ -9,7 +9,7 @@ export interface IMember {
 	userId: Schema.Types.ObjectId
 	role: 'creator' | 'admin' | 'participant'
 	customPaddingAfter?: number
-	availabilityStatus: 'available' | 'unavailable' | 'tentative'
+	availabilityStatus: 'available' | 'unavailable' | 'invited'
 }
 
 export interface IEvent extends Document {
@@ -34,18 +34,20 @@ export interface IEvent extends Document {
 		end: number
 	}
 
-	/** Status of the event */
-	status: 'draft' | 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
+	/** Lifecycle status of the event */
+	status: 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
 	/** The current scheduled time for the event, if any */
 	scheduledTime?: number
 
-	/** Whether the event is public and can be found by any user */
-	public: boolean
+	/** Visibility of the event */
+	visibility: 'draft' | 'public' | 'private'
 
 	/** Blackout periods where the event cannot be scheduled */
-	blackoutPeriods: ITimeRange[]
+	blackoutPeriods?: ITimeRange[]
 	/** Preferred times for the event */
 	preferredTimes?: ITimeRange[]
+	/** Intra-day start constraint for the event, in minutes of the day */
+	dailyStartConstraints?: ITimeRange[]
 
 	createdAt: Date
 	updatedAt: Date
@@ -59,6 +61,7 @@ export interface IEventFrontend {
 	members: {
 		userId: string
 		role: 'creator' | 'admin' | 'participant'
+		availabilityStatus: 'available' | 'unavailable' | 'tentative' | 'invited'
 	}[]
 
 	duration: number
@@ -67,13 +70,14 @@ export interface IEventFrontend {
 		end: number
 	}
 
-	status: 'draft' | 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
+	status: 'scheduling' | 'scheduled' | 'confirmed' | 'cancelled'
 	scheduledTime?: number
 
-	public: boolean
+	visibility: 'draft' | 'public' | 'private'
 
-	blackoutPeriods: ITimeRange[]
+	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
+	dailyStartConstraints?: ITimeRange[]
 
 	createdAt: Date
 	updatedAt: Date
@@ -119,8 +123,8 @@ const memberSchema = new Schema<IMember>({
 	availabilityStatus: {
 		type: Schema.Types.String,
 		required: true,
-		enum: ['available', 'unavailable', 'tentative'],
-		default: 'tentative'
+		enum: ['available', 'unavailable', 'tentative', 'invited'],
+		default: 'invited'
 	}
 }, { _id: false })
 
@@ -130,7 +134,7 @@ const eventSchema = new Schema<IEvent>({
 		required: true,
 		trim: true,
 		minLength: [1, 'Event name is too short (minimum 1 character)'],
-		maxLength: [100, 'Event name is too long (maximum 100 characters)']
+		maxLength: [50, 'Event name is too long (maximum 50 characters)']
 	},
 	description: {
 		type: Schema.Types.String,
@@ -177,13 +181,14 @@ const eventSchema = new Schema<IEvent>({
 	status: {
 		type: Schema.Types.String,
 		required: true,
-		enum: ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled'],
-		default: 'draft'
+		enum: ['scheduling', 'scheduled', 'confirmed', 'cancelled'],
+		default: 'scheduling'
 	},
-	public: {
-		type: Schema.Types.Boolean,
+	visibility: {
+		type: Schema.Types.String,
 		required: true,
-		default: false
+		enum: ['draft', 'public', 'private'],
+		default: 'draft'
 	},
 	scheduledTime: {
 		type: Schema.Types.Number,
@@ -198,7 +203,8 @@ const eventSchema = new Schema<IEvent>({
 		}
 	},
 	blackoutPeriods: [timeRangeSchema],
-	preferredTimes: [timeRangeSchema]
+	preferredTimes: [timeRangeSchema],
+	dailyStartConstraints: [timeRangeSchema]
 }, {
 	timestamps: true
 })

@@ -23,12 +23,11 @@ const router = Router()
 /**
  * @route GET /api/v1/users
  * @description Get all users
- * @access Private
+ * @access Public
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Array} res.body - Array of user objects.
 */
 router.get('/',
-	ensureAuthenticated,
 	getUsers
 )
 

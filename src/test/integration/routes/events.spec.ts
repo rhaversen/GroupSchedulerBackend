@@ -107,4 +107,46 @@ describe('Event routes', function () {
 		const res = await agent().get(`/api/v1/events/${new mongoose.Types.ObjectId().toString()}`).set('Cookie', cookie)
 		expect(res).to.have.status(404)
 	})
+
+	describe('Event timing update resets status', function () {
+		it('reverts confirmed event to scheduling when timing fields updated', async function () {
+			const { cookie } = await register('TimingUser', 'timinguser@example.com')
+			const tw = futureWindow()
+			const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({
+				name: 'Confirmed Event',
+				description: 'D',
+				timeWindow: tw,
+				duration: 3600000,
+				status: 'confirmed',
+				scheduledTime: tw.start + 600000
+			})
+			expect(createRes).to.have.status(201)
+			expect(createRes.body.status).to.equal('confirmed')
+			const eventId = createRes.body._id
+			const newWindow = { start: tw.start + 7200000, end: tw.end + 7200000 }
+			const patchRes = await agent().patch(`/api/v1/events/${eventId}`).set('Cookie', cookie).send({ timeWindow: newWindow })
+			expect(patchRes).to.have.status(200)
+			expect(patchRes.body.status).to.equal('scheduling')
+			expect(patchRes.body.scheduledTime).to.be.undefined
+		})
+
+		it('explicit status scheduling transition from scheduled event clears scheduledTime', async function () {
+			const { cookie } = await register('ScheduleUser', 'scheduleuser@example.com')
+			const tw = futureWindow()
+			const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({
+				name: 'Scheduled Event',
+				description: 'D',
+				timeWindow: tw,
+				duration: 3600000,
+				status: 'scheduled',
+				scheduledTime: tw.start + 600000
+			})
+			expect(createRes).to.have.status(201)
+			const eventId = createRes.body._id
+			const patchRes = await agent().patch(`/api/v1/events/${eventId}`).set('Cookie', cookie).send({ status: 'scheduling' })
+			expect(patchRes).to.have.status(200)
+			expect(patchRes.body.status).to.equal('scheduling')
+			expect(patchRes.body.scheduledTime).to.be.undefined
+		})
+	})
 })

@@ -1,7 +1,7 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import mongoose, { FilterQuery } from 'mongoose'
 
-import EventModel, { IEvent, IEventFrontend } from '../models/Event.js'
+import EventModel, { IEvent, IEventFrontend, IMember } from '../models/Event.js'
 import { IUser } from '../models/User.js'
 import logger from '../utils/logger.js'
 
@@ -15,15 +15,17 @@ export async function transformEvent (
 			description: event.description,
 			members: event.members.map(p => ({
 				userId: p.userId.toString(),
-				role: p.role
+				role: p.role,
+				availabilityStatus: p.availabilityStatus
 			})),
 			timeWindow: event.timeWindow,
 			duration: event.duration,
 			status: event.status,
 			scheduledTime: event.scheduledTime,
-			public: event.public,
+			visibility: event.visibility,
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
+			dailyStartConstraints: event.dailyStartConstraints,
 			createdAt: event.createdAt,
 			updatedAt: event.updatedAt
 		}
@@ -46,28 +48,22 @@ function isEventParticipant (event: IEvent, userId: string): boolean {
 }
 
 function canAccessEvent (event: IEvent, userId?: string): boolean {
-	// If event is public and not a draft, anyone can access it
-	if (event.public && event.status !== 'draft') {
-		return true
-	}
+	// Public visibility: anyone can access
+	if (event.visibility === 'public') { return true }
 
-	// If no user ID provided, can't access private events
-	if (userId === undefined) {
-		return false
-	}
-
-	// For private events, user must be a participant
-	if (!isEventParticipant(event, userId)) {
-		return false
-	}
-
-	// For draft events, only admins and creators can access
-	if (event.status === 'draft') {
+	// Draft visibility: only admins/creators (must be authenticated)
+	if (event.visibility === 'draft') {
+		if (userId == null) { return false }
 		return isEventAdmin(event, userId) || isEventCreator(event, userId)
 	}
 
-	// For non-draft private events, any participant can access
-	return true
+	// Private visibility: must be participant
+	if (event.visibility === 'private') {
+		if (userId == null) { return false }
+		return isEventParticipant(event, userId)
+	}
+
+	return false
 }
 
 export async function createEvent (req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -87,18 +83,76 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		timeWindow,
 		duration,
 		blackoutPeriods,
-		preferredTimes
-	} = req.body
+		preferredTimes,
+		dailyStartConstraints,
+		status: requestedStatus,
+		visibility: requestedVisibility,
+		scheduledTime
+	} = req.body as Partial<IEvent>
 
 	try {
+		let status: IEvent['status'] = 'scheduling'
+		// Creation rules: scheduling default; confirmed only with scheduledTime; scheduled requires scheduledTime present; cannot create cancelled
+		if (requestedStatus != null) {
+			if (requestedStatus === 'scheduling') {
+				if (scheduledTime != null) { res.status(400).json({ error: 'scheduledTime must be absent when creating a scheduling event' }); return }
+				status = 'scheduling'
+			} else if (requestedStatus === 'scheduled') {
+				if (scheduledTime == null) { res.status(400).json({ error: 'scheduledTime required when creating a scheduled event' }); return }
+				status = 'scheduled'
+			} else if (requestedStatus === 'confirmed') {
+				if (scheduledTime == null) { res.status(400).json({ error: 'scheduledTime required when creating a confirmed event' }); return }
+				status = 'confirmed'
+			} else {
+				res.status(400).json({ error: `Status '${requestedStatus}' not allowed at creation` }); return
+			}
+		}
+
+		// Build members list and enforce first member is posting user as creator
+		let rawMembers = members ?? [{ userId: user._id, role: 'creator' }]
+		if (rawMembers.length === 0) { rawMembers = [{ userId: user._id, role: 'creator' }] }
+		const first = rawMembers[0]
+		if (first.userId.toString() !== user._id.toString() || first.role !== 'creator') {
+			res.status(400).json({ error: 'First member must be the posting user with role creator' }); return
+		}
+		const sanitizedMembers: IMember[] = rawMembers.map((m, idx) => ({
+			userId: m.userId,
+			role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+			availabilityStatus: 'invited'
+		}))
+
+		let effectiveTimeWindow = timeWindow
+		if (effectiveTimeWindow == null) {
+			if (status === 'confirmed') {
+				if (scheduledTime == null || duration == null) { res.status(400).json({ error: 'scheduledTime and duration required for confirmed event' }); return }
+				effectiveTimeWindow = undefined
+			} else {
+				res.status(400).json({ error: 'timeWindow is required unless creating a confirmed event with scheduledTime' }); return
+			}
+		}
+
+		// visibility rules: default draft; only allow draft|public|private
+		let visibility: IEvent['visibility'] = 'draft'
+		if (requestedVisibility != null) {
+			if (!['draft', 'public', 'private'].includes(requestedVisibility)) { res.status(400).json({ error: 'Invalid visibility value' }); return }
+			visibility = requestedVisibility as IEvent['visibility']
+		}
+
 		const eventData: Partial<IEvent> = {
 			name,
 			description,
-			members: members ?? [{ userId: user._id, role: 'creator', availabilityStatus: 'available' }],
-			timeWindow,
+			members: sanitizedMembers,
+			timeWindow: effectiveTimeWindow,
 			duration,
 			blackoutPeriods: blackoutPeriods ?? [],
-			preferredTimes
+			preferredTimes,
+			dailyStartConstraints,
+			status,
+			visibility
+		}
+		if (status === 'confirmed' && scheduledTime != null) {
+			// only confirmed may carry scheduledTime on create per above logic
+			eventData.scheduledTime = scheduledTime
 		}
 
 		const newEvent = await EventModel.create(eventData)
@@ -174,7 +228,10 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (!isEventAdmin(event, user.id) && !isEventCreator(event, user.id)) {
+		const userIsCreator = isEventCreator(event, user.id)
+		const userIsAdmin = isEventAdmin(event, user.id)
+
+		if (!userIsAdmin && !userIsCreator) {
 			logger.warn(`Update event failed: User ${user.id} not authorized to edit event ${eventId}`)
 			res.status(403).json({ error: 'Not authorized to edit this event' })
 			await session.abortTransaction()
@@ -182,22 +239,207 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (event.status === 'confirmed') {
-			logger.warn(`Update event failed: Event ${eventId} is confirmed and cannot be modified`)
-			res.status(400).json({ error: 'Cannot modify confirmed events' })
+		// Terminal state: cancelled
+		if (event.status === 'cancelled') {
+			logger.warn(`Update event failed: Event ${eventId} is cancelled and cannot be modified`)
+			res.status(400).json({ error: 'Cannot modify cancelled events' })
 			await session.abortTransaction()
 			await session.endSession()
 			return
 		}
 
-		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
+		const body = req.body as Partial<IEvent>
+		const requestedStatus = body.status
+		const requestedVisibility = body.visibility
+		const scheduledTime = body.scheduledTime ?? event.scheduledTime
 
-		for (const field of updatableFields) {
-			if (req.body[field] !== undefined) {
-				event.set(field, req.body[field])
+		// Track if timing related fields changed to potentially revert status -> scheduling
+		const timingFields: (keyof IEvent)[] = ['timeWindow', 'duration', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
+		const timingFieldChanged = timingFields.some(f => body[f] !== undefined)
+
+		// Collect other (non status/time) fields to update after validation
+		const otherFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'visibility', 'blackoutPeriods', 'preferredTimes', 'dailyStartConstraints']
+
+		async function reject (message: string): Promise<void> {
+			logger.warn(`Update event failed validation for ${eventId}: ${message}`)
+			await session.abortTransaction()
+			await session.endSession()
+			res.status(400).json({ error: message })
+		}
+
+		const current = event.status
+		let statusChangeAllowed = false
+		let updateApplied = false
+		// Validate status transitions when a status change is requested OR when scheduledTime is being modified without a status change
+		if (requestedStatus !== undefined || body.scheduledTime !== undefined) {
+			switch (current) {
+				case 'scheduling': {
+					if (requestedStatus === undefined) {
+						// No explicit status change; scheduledTime not allowed
+						if (body.scheduledTime !== undefined) { await reject('scheduledTime must not be set when in scheduling'); return }
+						break
+					}
+					if (requestedStatus === 'scheduling') {
+						if (scheduledTime != null) { await reject('scheduledTime must not be set when in scheduling'); return }
+					} else if (requestedStatus === 'confirmed') {
+						if (scheduledTime == null) { await reject('scheduledTime required to confirm event'); return }
+					} else if (requestedStatus === 'cancelled') {
+						// always allowed
+					} else {
+						await reject(`Invalid status transition from scheduling to ${requestedStatus}`); return
+					}
+					break
+				}
+				case 'scheduled': {
+					if (requestedStatus === undefined) {
+						if (body.scheduledTime !== undefined && scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
+						break
+					}
+					if (requestedStatus === 'scheduled') {
+						if (scheduledTime == null) { await reject('scheduledTime must be set for scheduled events'); return }
+					} else if (requestedStatus === 'confirmed') {
+						if (scheduledTime == null) { await reject('scheduledTime must be set to confirm scheduled events'); return }
+					} else if (requestedStatus === 'cancelled') {
+						// always allowed
+					} else if (requestedStatus === 'scheduling') {
+						// Allow reverting to scheduling explicitly (will clear scheduledTime later)
+					} else {
+						await reject(`Invalid status transition from scheduled to ${requestedStatus}`); return
+					}
+					break
+				}
+				case 'confirmed': {
+					if (requestedStatus === undefined || requestedStatus === 'confirmed') {
+						if (body.scheduledTime !== undefined && body.scheduledTime !== event.scheduledTime) { await reject('Cannot change scheduledTime after confirmation'); return }
+						// Allow implicit timing edits to revert status to scheduling handled later
+					} else if (requestedStatus === 'cancelled') {
+						// allowed
+					} else if (requestedStatus === 'scheduling') {
+						// Explicit revert to scheduling allowed when modifying timing (validated later)
+					} else {
+						await reject(`Confirmed events can only be cancelled or reverted to scheduling by timing changes; attempted: ${requestedStatus}`); return
+					}
+					break
+				}
+				// cancelled handled earlier
+			}
+			if (requestedStatus !== undefined) { statusChangeAllowed = true }
+		}
+
+		// Automatic status reversion: if timing fields changed and not cancelling, force status -> scheduling
+		if (!statusChangeAllowed && timingFieldChanged && requestedStatus === undefined && (event.status === 'scheduling' || event.status === 'scheduled' || event.status === 'confirmed')) {
+			statusChangeAllowed = true
+			body.status = 'scheduling'
+		}
+
+		// Apply status & scheduledTime mutations after validation logic
+		const effectiveRequestedStatus = body.status ?? requestedStatus
+		if (effectiveRequestedStatus !== undefined && statusChangeAllowed) {
+			if (effectiveRequestedStatus !== event.status) {
+				// Clearing scheduledTime when reverting back to scheduling due to timing changes
+				if (effectiveRequestedStatus === 'scheduling') {
+					event.set('scheduledTime', undefined)
+				}
+				event.set('status', effectiveRequestedStatus)
 				updateApplied = true
-				logger.debug(`Updating ${field} for event ID ${eventId}`)
+			}
+		}
+		// scheduledTime assignment rules:
+		//  - Allow setting scheduledTime when transitioning to confirmed
+		//  - Allow setting scheduledTime for scheduled status (future enhancement if scheduled reintroduced)
+		//  - Prevent modifying scheduledTime once confirmed (already validated above)
+		if (body.scheduledTime !== undefined) {
+			if (event.status === 'confirmed') {
+				// Already enforced earlier; double guard
+			} else if ((body.status ?? requestedStatus) === 'scheduling') {
+				// scheduledTime not retained when reverting to scheduling
+				event.set('scheduledTime', undefined)
+			} else {
+				event.set('scheduledTime', body.scheduledTime)
+				updateApplied = true
+			}
+		}
+
+		// Visibility transition rules:
+		// draft -> public | private | draft
+		// public <-> private
+		if (requestedVisibility !== undefined) {
+			if (event.visibility === 'public' || event.visibility === 'private') {
+				if (requestedVisibility === 'draft') {
+					await reject('Cannot revert to draft visibility once changed from public/private')
+				}
+			}
+		}
+
+		// If confirmed and not cancelling, restrict other field modifications unless reverting to scheduling (explicit or implicit timing change)
+		if (event.status === 'confirmed' && requestedStatus !== 'cancelled' && (body.status ?? requestedStatus) !== 'scheduling') {
+			const otherChange = otherFields.some(f => body[f] !== undefined)
+			if (otherChange) { await reject('Cannot modify confirmed events except to cancel them'); return }
+		}
+
+		for (const f of otherFields) {
+			if (body[f] !== undefined) {
+				if (f === 'members') {
+					// Membership update rules:
+					//  - First member is the original creator and must remain creator and remain in list
+					//  - Multiple creators allowed; only creators can create additional creators
+					//  - Only the original creator can demote or remove another creator
+					//  - Creators (any) can promote participant->admin or participant->creator, admin->creator
+					//  - Admins may add/remove participants and demote admin->participant but cannot promote or touch any creator
+					const incoming = body.members ?? []
+					if (incoming.length === 0) { await reject('Members array cannot be empty'); return }
+					const originalFirst = event.members[0]
+					const incomingFirst = incoming[0]
+					if (originalFirst.userId.toString() !== incomingFirst.userId.toString() || incomingFirst.role !== 'creator') {
+						await reject('First member must remain the original creator'); return
+					}
+					// Build lookup of existing roles
+					const existingRoleById = new Map(event.members.map(m => [m.userId.toString(), m.role]))
+					// Track IDs of incoming to detect removals
+					const incomingIds = new Set(incoming.map(m => m.userId.toString()))
+					// Validate removals: original creator cannot be removed; only original creator may remove other creators
+					for (const prev of event.members) {
+						const prevId = prev.userId.toString()
+						if (!incomingIds.has(prevId)) {
+							if (prevId === originalFirst.userId.toString()) { await reject('Original creator cannot be removed'); return }
+							if (prev.role === 'creator' && !userIsCreator) { await reject('Only the original creator can remove a creator'); return }
+						}
+					}
+					for (let i = 1; i < incoming.length; i++) {
+						const m = incoming[i]
+						const existingRole = existingRoleById.get(m.userId.toString())
+						if (!userIsCreator) {
+							// Acting user is admin
+							if (m.role === 'creator') { await reject('Admins cannot assign creator role'); return }
+							if (existingRole === 'creator') { await reject('Admins cannot modify creator roles'); return }
+							if (existingRole == null) {
+								if (m.role != null && m.role !== 'participant') { await reject('Admins can only add new members as participants'); return }
+							} else if (m.role !== existingRole) {
+								if (!(existingRole === 'admin' && m.role === 'participant')) { await reject('Admins can only demote admin to participant'); return }
+							}
+						} else {
+							// Acting user is a creator. If not original creator, limit ability to demote/remove other creators.
+							const isOriginalCreator = user.id === originalFirst.userId.toString()
+							if (!isOriginalCreator) {
+								if (existingRole === 'creator' && m.role !== 'creator') { await reject('Only original creator can demote another creator'); return }
+							}
+						}
+					}
+					// Sanitization: ensure roles for non-creator entries default to participant if omitted
+					const sanitized: IMember[] = incoming.map((m, idx) => ({
+						userId: m.userId,
+						role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+						availabilityStatus: 'invited'
+					}))
+					event.set('members', sanitized)
+					updateApplied = true
+					logger.debug(`Updating members (role rules enforced) for event ID ${eventId}`)
+				} else {
+					// For other fields, just set directly
+					event.set(f, body[f])
+					updateApplied = true
+					logger.debug(`Updating ${f} for event ID ${eventId}`)
+				}
 			}
 		}
 
@@ -275,9 +517,10 @@ export async function deleteEvent (req: Request, res: Response, next: NextFuncti
 	}
 }
 
-interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; public?: boolean; status?: string[]; limit: number; offset: number }
+interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; visibility?: string[]; status?: string[]; limit: number; offset: number }
 interface IGetEventsResponse { events: IEventFrontend[]; total: number }
-const VALID_STATUSES = ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled']
+const VALID_STATUSES = ['scheduling', 'scheduled', 'confirmed', 'cancelled']
+const VALID_VISIBILITY = ['draft', 'public', 'private']
 
 export async function getEvents (req: Request, res: Response, next: NextFunction): Promise<void> {
 	logger.debug('Getting events with query', { query: req.query })
@@ -287,7 +530,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf,
 			participantOf,
 			memberOf,
-			public: publicFlag,
+			visibility: visibilityParam,
 			status,
 			limit,
 			offset
@@ -301,7 +544,11 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf: takeFirst(adminOf),
 			participantOf: takeFirst(participantOf),
 			memberOf: takeFirst(memberOf),
-			public: (() => { const v = takeFirst(publicFlag); if (v === 'true') { return true } if (v === 'false') { return false } return undefined })(),
+			visibility: (() => {
+				const raw = parseIds(visibilityParam)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
+				const filtered = raw?.filter(s => VALID_VISIBILITY.includes(s))
+				return filtered && filtered.length ? filtered : undefined
+			})(),
 			status: (() => {
 				const raw = parseIds(status)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
 				const filtered = raw?.filter(s => VALID_STATUSES.includes(s))
@@ -315,7 +562,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		const filter: FilterQuery<IEvent> = {}
 		const and: FilterQuery<IEvent>[] = []
 
-		if (q.public !== undefined) { and.push({ public: q.public }) }
+		if (q.visibility?.length != null) { and.push({ visibility: q.visibility.length === 1 ? q.visibility[0] : { $in: q.visibility } }) }
 		if (q.status?.length != null) { and.push({ status: q.status.length === 1 ? q.status[0] : { $in: q.status } }) }
 
 		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ members: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
@@ -324,15 +571,15 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		if (q.participantOf != null) { and.push(roleMatch(q.participantOf, 'participant')) }
 		if (q.memberOf != null) { and.push({ 'members.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
 
-		const visibility: FilterQuery<IEvent>[] = [{ public: true, status: { $ne: 'draft' } }]
+		const visibilityAccess: FilterQuery<IEvent>[] = [{ visibility: 'public' }]
 		if (viewerId != null) {
 			const vObj = new mongoose.Types.ObjectId(viewerId)
-			visibility.push(
-				{ status: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
-				{ public: false, status: { $ne: 'draft' }, 'members.userId': vObj }
+			visibilityAccess.push(
+				{ visibility: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
+				{ visibility: 'private', 'members.userId': vObj }
 			)
 		}
-		and.push({ $or: visibility })
+		and.push({ $or: visibilityAccess })
 
 		const finalFilter = and.length ? { $and: and } : filter
 
@@ -408,16 +655,67 @@ export async function updateParticipantRole (req: Request, res: Response, next: 
 
 		const targetParticipant = event.members[memberIndex]
 
-		// Only creators can modify creator roles
-		if ((newRole === 'creator' || targetParticipant.role === 'creator') && !userIsCreator) {
-			logger.warn(`Update participant role failed: User ${user.id} cannot modify creator role in event ${eventId}`)
-			res.status(403).json({ error: 'Only creators can modify creator roles' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
+		// Role change rules with multiple creators:
+		//  - First member is original creator (immutable, cannot change role)
+		//  - Multiple creators allowed (creator can promote to creator)
+		//  - Only original creator can demote or remove another creator
+		//  - Any creator can promote participant/admin -> creator
+		//  - Any creator can promote participant -> admin
+		//  - Admin can only demote admin -> participant or keep same; cannot touch creators or promote
+		const originalFirst = event.members[0]
+		const isOriginalCreator = originalFirst.userId.toString() === user.id
+		if (targetParticipant.userId.toString() === originalFirst.userId.toString()) {
+			// Original creator role immutable
+			if (newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Attempt to change original creator role for event ${eventId}`)
+				res.status(400).json({ error: 'Original creator role cannot be changed' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else if (targetParticipant.role === 'creator') {
+			// Changing a (non-original) creator
+			if (!isOriginalCreator && newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Non-original creator ${user.id} attempted to demote another creator in event ${eventId}`)
+				res.status(403).json({ error: 'Only the original creator can demote another creator' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+			if (!userIsCreator && newRole !== 'creator') {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted to modify creator in event ${eventId}`)
+				res.status(403).json({ error: 'Admins cannot modify creator roles' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else if (!userIsCreator) {
+			// Acting user is admin on non-creator target
+			if (newRole === 'creator' || newRole === 'admin') {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted promotion to ${newRole} in event ${eventId}`)
+				res.status(403).json({ error: 'Admins cannot promote members' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+			if (targetParticipant.role === 'admin' && newRole === 'participant') {
+				// Allowed demotion
+			} else if (targetParticipant.role !== newRole) {
+				logger.warn(`Update participant role failed: Admin ${user.id} attempted forbidden role change ${targetParticipant.role} -> ${newRole} in event ${eventId}`)
+				res.status(403).json({ error: 'Admins can only demote admin to participant' })
+				await session.abortTransaction()
+				await session.endSession()
+				return
+			}
+		} else {
+			// Acting user is a creator modifying non-creator target; promotions allowed
+			// No extra validation needed beyond above
 		}
 
-		event.members[memberIndex].role = newRole
+		// Apply role (idempotent allowed cases)
+		if (event.members[memberIndex].role !== newRole) {
+			event.members[memberIndex].role = newRole
+		}
 		await event.validate()
 		await event.save({ session })
 		await session.commitTransaction()
