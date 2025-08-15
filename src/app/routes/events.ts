@@ -162,7 +162,7 @@ router.delete('/:id',
  * @access Private (members only)
  * @param {string} req.params.eventId - The ID of the event.
  * @param {number} [req.body.customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.availabilityStatus] - Availability status: 'invited', 'available', 'unavailable', 'tentative' (optional).
+ * @param {string} [req.body.availabilityStatus] - Availability status: 'invited', 'available', 'unavailable' (optional).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated user event settings object.
  */

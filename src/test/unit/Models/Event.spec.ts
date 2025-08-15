@@ -442,7 +442,7 @@ describe('Event Model', function () {
 					{
 						userId: secondUser._id,
 						role: 'participant',
-						availabilityStatus: 'tentative'
+						availabilityStatus: 'invited'
 					}
 				]
 			})

@@ -105,7 +105,7 @@ await EventModel.create({
 	description: 'Exactly two creators to test multi-creator logic',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'tentative' },
+		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 90 * 60 * 1000,
@@ -139,7 +139,7 @@ await EventModel.create({
 	description: 'One creator and rest admins',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userEpsilon._id, role: 'admin', availabilityStatus: 'tentative' },
+		{ userId: userEpsilon._id, role: 'admin', availabilityStatus: 'unavailable' },
 		{ userId: userZeta._id, role: 'admin', availabilityStatus: 'available' },
 		{ userId: userEta._id, role: 'admin', availabilityStatus: 'unavailable' }
 	],
@@ -192,7 +192,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userLambda._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userMu._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userMu._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 2 * day, end: now + 20 * day },
@@ -210,7 +210,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userNu._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userXi._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userXi._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 2 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 10 * day },
@@ -226,7 +226,7 @@ await EventModel.create({
 	description: 'Public event intentionally excluding test user',
 	members: [
 		{ userId: userOmicron._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userPi._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userPi._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 2 * hour,
 	timeWindow: { start: now + 1 * day, end: now + 7 * day },
@@ -258,10 +258,10 @@ await EventModel.create({
 	description: 'Stress test with many members and mixed roles',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userTau._id, role: 'admin', availabilityStatus: 'tentative' },
+		{ userId: userTau._id, role: 'admin', availabilityStatus: 'available' },
 		{ userId: userUpsilon._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userPhi._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userChi._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userChi._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userPsi._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userOmega._id, role: 'participant', availabilityStatus: 'available' }
 	],
@@ -283,7 +283,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available', customPaddingAfter: 30 * 60 * 1000 },
 		{ userId: userAlpha._id, role: 'participant', availabilityStatus: 'available', customPaddingAfter: 15 * 60 * 1000 },
-		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'tentative', customPaddingAfter: 45 * 60 * 1000 }
+		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available', customPaddingAfter: 45 * 60 * 1000 }
 	],
 	duration: 2 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 15 * day },
@@ -300,7 +300,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 12 * hour,
 	timeWindow: { start: now + 5 * day, end: now + 60 * day },
@@ -328,31 +328,13 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Tentative Heavy Event',
-	description: 'Most members tentative to test weighting',
-	members: [
-		{ userId: userTest._id, role: 'creator', availabilityStatus: 'tentative' },
-		{ userId: userIota._id, role: 'participant', availabilityStatus: 'tentative' },
-		{ userId: userKappa._id, role: 'participant', availabilityStatus: 'tentative' },
-		{ userId: userLambda._id, role: 'participant', availabilityStatus: 'tentative' }
-	],
-	duration: 2 * hour,
-	timeWindow: { start: now + 2 * day, end: now + 9 * day },
-	status: 'scheduling',
-	visibility: 'private',
-	blackoutPeriods: [],
-	preferredTimes: [],
-	dailyStartConstraints: [{ start: 11 * 60, end: 24 * 60 }]
-})
-
-await EventModel.create({
 	name: 'Unavailable Heavy Event',
 	description: 'Most members unavailable to test conflict logic',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'unavailable' },
 		{ userId: userMu._id, role: 'participant', availabilityStatus: 'unavailable' },
-		{ userId: userNu._id, role: 'participant', availabilityStatus: 'unavailable' },
-		{ userId: userXi._id, role: 'participant', availabilityStatus: 'available' }
+		{ userId: userNu._id, role: 'participant', availabilityStatus: 'available' },
+		{ userId: userXi._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 11 * day },
@@ -485,12 +467,12 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userAlpha._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userZeta._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userEta._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userEta._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 4 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 20 * day },
@@ -551,9 +533,8 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'unavailable' },
 		{ userId: userAlpha._id, role: 'participant', availabilityStatus: 'unavailable' },
-		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'unavailable' },
-		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'available' }
+		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available' },
+		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 3 * day, end: now + 18 * day },
@@ -632,7 +613,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 2 * hour,
@@ -690,7 +671,7 @@ await EventModel.create({
 	description: 'Scheduled but awaiting confirmation by leadership',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userOmega._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userOmega._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userPhi._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 3 * hour,
@@ -729,7 +710,7 @@ await EventModel.create({
 	description: 'Still gathering participant availability',
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userSigma._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userSigma._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userRho._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 4 * hour,
@@ -779,7 +760,7 @@ await EventModel.create({
 		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 9 * day, end: now + 35 * day },
@@ -814,12 +795,12 @@ await EventModel.create({
 })
 
 await EventModel.create({
-	name: 'Scheduling Private Meeting (TestUser, tentative)',
-	description: 'Covers scheduling phase where TestUser is tentative participant; creator and admin are other users.',
+	name: 'Scheduling Private Meeting',
+	description: 'Covers scheduling phase where TestUser is participant; creator and admin are other users.',
 	members: [
 		{ userId: userGamma._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userDelta._id, role: 'admin', availabilityStatus: 'tentative' },
-		{ userId: userTest._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userDelta._id, role: 'admin', availabilityStatus: 'unavailable' },
+		{ userId: userTest._id, role: 'participant', availabilityStatus: 'available' },
 		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 2 * hour,
@@ -869,11 +850,11 @@ await EventModel.create({
 
 await EventModel.create({
 	name: 'Draft Event (TestUser invited, not creator)',
-	description: 'Covers draft event where TestUser has tentative availability and is not the creator.',
+	description: 'Covers draft event where TestUser is not the creator.',
 	members: [
 		{ userId: userNu._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userXi._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userTest._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userTest._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 2 * hour,
 	timeWindow: { start: now + 6 * day, end: now + 13 * day },
@@ -889,9 +870,9 @@ await EventModel.create({
 	description: 'Covers public event in scheduling state where TestUser and others propose times; not a creator.',
 	members: [
 		{ userId: userOmicron._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userPi._id, role: 'participant', availabilityStatus: 'tentative' },
-		{ userId: userTest._id, role: 'participant', availabilityStatus: 'available' },
-		{ userId: userRho._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userPi._id, role: 'participant', availabilityStatus: 'available' },
+		{ userId: userTest._id, role: 'participant', availabilityStatus: 'unavailable' },
+		{ userId: userRho._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 4 * hour,
 	timeWindow: { start: now + 8 * day, end: now + 26 * day },
@@ -931,7 +912,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userBeta._id, role: 'admin', availabilityStatus: 'tentative' },
+		{ userId: userBeta._id, role: 'admin', availabilityStatus: 'unavailable' },
 		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 2 * hour,
@@ -953,7 +934,7 @@ await EventModel.create({
 		{ userId: userDelta._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userEpsilon._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userTest._id, role: 'admin', availabilityStatus: 'available' },
-		{ userId: userZeta._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userZeta._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 90 * 60 * 1000,
 	timeWindow: { start: now + 10 * day, end: now + 28 * day },
@@ -972,7 +953,7 @@ await EventModel.create({
 		{ userId: userEta._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userTheta._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userIota._id, role: 'admin', availabilityStatus: 'available' },
-		{ userId: userTest._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userTest._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 9 * day, end: now + 30 * day },
@@ -993,7 +974,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userLong._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userAlpha._id, role: 'admin', availabilityStatus: 'tentative' },
+		{ userId: userAlpha._id, role: 'admin', availabilityStatus: 'unavailable' },
 		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 2 * hour,
@@ -1013,7 +994,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userGamma._id, role: 'admin', availabilityStatus: 'available' },
-		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'tentative' },
+		{ userId: userDelta._id, role: 'participant', availabilityStatus: 'unavailable' },
 		{ userId: userEpsilon._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 4 * hour,
@@ -1039,7 +1020,7 @@ await EventModel.create({
 		{ userId: userAlpha._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userBeta._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userTest._id, role: 'admin', availabilityStatus: 'available' },
-		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userGamma._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 3 * hour,
 	timeWindow: { start: now + 9 * day, end: now + 25 * day },
@@ -1084,7 +1065,7 @@ await EventModel.create({
 	description: 'Scheduled creative workshop respecting a daily intra-day allowable window (09:00-17:30).',
 	members: [
 		{ userId: userNu._id, role: 'creator', availabilityStatus: 'available' },
-		{ userId: userXi._id, role: 'admin', availabilityStatus: 'tentative' },
+		{ userId: userXi._id, role: 'admin', availabilityStatus: 'unavailable' },
 		{ userId: userTest._id, role: 'participant', availabilityStatus: 'available' }
 	],
 	duration: 3 * hour,
@@ -1109,7 +1090,7 @@ await EventModel.create({
 	members: [
 		{ userId: userTest._id, role: 'creator', availabilityStatus: 'available' },
 		{ userId: userAlpha._id, role: 'admin', availabilityStatus: 'available' },
-		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'tentative' }
+		{ userId: userBeta._id, role: 'participant', availabilityStatus: 'unavailable' }
 	],
 	duration: 26 * hour,
 	timeWindow: { start: now + 5 * day, end: now + 9 * day },
@@ -1264,4 +1245,5 @@ await SessionModel.create({
 	expires: new Date(Date.now() + 86400000)
 })
 
+logger.info('Database seeded')
 logger.info('Database seeded')

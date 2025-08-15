@@ -9,7 +9,7 @@ export interface IUserEventSettingsFrontend {
 	userId: string
 	eventId: string
 	customPaddingAfter?: number
-	availabilityStatus: 'available' | 'unavailable' | 'tentative' | 'invited'
+	availabilityStatus: 'available' | 'unavailable' | 'invited'
 }
 
 export async function transformUserEventSettings (

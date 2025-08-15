@@ -9,7 +9,7 @@ export interface IMember {
 	userId: Schema.Types.ObjectId
 	role: 'creator' | 'admin' | 'participant'
 	customPaddingAfter?: number
-	availabilityStatus: 'available' | 'unavailable' | 'tentative' | 'invited'
+	availabilityStatus: 'available' | 'unavailable' | 'invited'
 }
 
 export interface IEvent extends Document {
