@@ -6,8 +6,7 @@ import {
 	deleteEvent,
 	getEvent,
 	getEvents,
-	updateEvent,
-	updateParticipantRole
+	updateEvent
 } from '../controllers/eventController.js'
 import {
 	getUserEventSettings,
@@ -69,7 +68,7 @@ router.post('/',
 *      One or multiple visibility values (draft | public | private) (comma-separated or repeated parameter).
  *
 *  - status: string | string[]
-*      One or multiple event status values (scheduling | scheduled | confirmed | cancelled).
+*      One or multiple event status values (scheduling | confirmed | cancelled).
  *      Accept either repeated query parameters (?status=a&status=b) or a comma-separated list (?status=a,b).
  *
  *  - limit: number (default 50, max 200)
@@ -96,8 +95,8 @@ router.post('/',
 	Events I participate in (non-admin): /api/v1/events?participantOf=ME
 	Any events I am in: /api/v1/events?memberOf=ME
 	Public events: /api/v1/events?visibility=public&limit=20
-	Public scheduled events: /api/v1/events?visibility=public&status=scheduled
-	Multiple statuses: /api/v1/events?status=scheduled,confirmed
+	Public confirmed events: /api/v1/events?visibility=public&status=confirmed
+	Multiple statuses: /api/v1/events?status=confirmed,cancelled
  */
 router.get('/',
 	getEvents
@@ -130,7 +129,7 @@ router.get('/:id',
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
  * @param {number} [req.body.duration] - Duration in milliseconds (optional).
-* @param {string} [req.body.status] - Event status ('scheduling', 'scheduled', 'confirmed', 'cancelled') (optional).
+* @param {string} [req.body.status] - Event status ('scheduling', 'confirmed', 'cancelled') (optional).
  * @param {number} [req.body.scheduledTime] - Scheduled time (Unix ms) (optional).
 * @param {string} [req.body.visibility] - Visibility ('draft','public','private') (optional; draft cannot be reverted to once changed).
  * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
@@ -182,21 +181,6 @@ router.patch('/:eventId/settings',
 router.get('/:eventId/settings',
 	ensureAuthenticated,
 	getUserEventSettings
-)
-
-/**
- * @route PATCH /api/v1/events/:id/members/role
- * @description Update a participant's role in an event.
- * @access Private (admins and creators only)
- * @param {string} req.params.id - The ID of the event.
- * @param {string} req.body.userId - The user ID whose role to update.
- * @param {string} req.body.role - The new role ('creator', 'admin', 'participant').
- * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The updated event object.
- */
-router.patch('/:id/members/role',
-	ensureAuthenticated,
-	updateParticipantRole
 )
 
 export default router
