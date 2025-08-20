@@ -15,7 +15,8 @@
         "package.json",
         "package-lock.json",
         "tsconfig.json",
-        "dist/**"
+        "dist/**",
+        "**/seedDatabase.ts"
     ],
     "ignoreWords": [
         "BETTERSTACK",

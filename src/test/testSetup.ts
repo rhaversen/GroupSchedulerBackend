@@ -21,7 +21,8 @@ process.env.NODE_ENV = 'test'
 process.env.SESSION_SECRET = 'TEST_SESSION_SECRET'
 
 const chaiHttpObject = chai.use(chaiHttp)
-let app: { server: Server, sessionStore: MongoStore }
+let app: { server: Server, sessionStore: MongoStore } | null = null
+let appImportPromise: Promise<{ server: Server, sessionStore: MongoStore }> | null = null
 let chaiAppAgent: ChaiHttp.Agent
 
 const cleanDatabase = async function (): Promise<void> {
@@ -41,18 +42,29 @@ const cleanDatabase = async function (): Promise<void> {
 
 before(async function () {
 	this.timeout(20000)
-	// Setting environment
 	process.env.NODE_ENV = 'test'
-
-	// Connect to the database
+	if (app !== null) {
+		return
+	}
 	const database = await import('./mongoMemoryReplSetConnector.js')
-	await database.default()
-
-	// Importing and starting the app
-	app = await import('../app/index.js')
+	if (mongoose.connection.readyState === 0) {
+		await database.default()
+	}
+	if (appImportPromise === null) {
+		appImportPromise = import('../app/index.js') as Promise<{ server: Server, sessionStore: MongoStore }>
+	}
+	app = await appImportPromise
+	if (!app.server.listening) {
+		await new Promise<void>((resolve) => {
+			app?.server.listen(0, () => { resolve() })
+		})
+	}
 })
 
 beforeEach(async function () {
+	if (app === null) {
+		throw new Error('App not initialized')
+	}
 	chaiAppAgent = chaiHttpObject.request(app.server).keepOpen()
 })
 
@@ -69,20 +81,18 @@ afterEach(async function () {
 })
 
 after(async function () {
-	// Increase timeout to allow for potentially slow MongoDB shutdown
 	this.timeout(40000)
-	// Close the server
-	app.server.close()
-	// Disconnect from the database
-	await disconnectFromInMemoryMongoDB(app.sessionStore)
-	// Disconnect from sentry
+	if (app !== null) {
+		app.server.close()
+		await disconnectFromInMemoryMongoDB(app.sessionStore)
+	}
 	await Sentry.close()
+	app = null
+	appImportPromise = null
 })
 
 // Define return type explicitly here to match agent created
-const getChaiAgent = (): ChaiHttp.Agent => {
-	return chaiAppAgent
-}
+const getChaiAgent = (): ChaiHttp.Agent => chaiAppAgent
 
 /**
  * Extracts the connect.sid cookie string from the Set-Cookie header.
