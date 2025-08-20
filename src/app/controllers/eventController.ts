@@ -28,8 +28,8 @@ export async function transformEvent (
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
 			dailyStartConstraints: event.dailyStartConstraints,
-			createdAt: event.createdAt,
-			updatedAt: event.updatedAt
+			createdAt: event.createdAt.toISOString(),
+			updatedAt: event.updatedAt.toISOString()
 		}
 	} catch (error) {
 		logger.error(`Error transforming event ID ${event.id}`, { error })
