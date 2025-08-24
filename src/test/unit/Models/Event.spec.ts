@@ -101,7 +101,7 @@ describe('Event Model', function () {
 				...fixedEventFields,
 				blackoutPeriods: [{ start: 100, end: 200 }],
 				preferredTimes: [{ start: 300, end: 400 }],
-				dailyStartConstraints: [{ start: 480, end: 1020 }]
+				dailyStartConstraints: [{ start: 480 * 60 * 1000, end: 1020 * 60 * 1000 }]
 			})
 			expect(event.timeWindow).to.equal(undefined)
 			expect(event.blackoutPeriods).to.equal(undefined)
@@ -217,7 +217,7 @@ describe('Event Model', function () {
 				timeWindow: { start: futureStart, end: futureEnd },
 				blackoutPeriods: [{ start: 100, end: 200 }],
 				preferredTimes: [{ start: 300, end: 400 }],
-				dailyStartConstraints: [{ start: 480, end: 1020 }]
+				dailyStartConstraints: [{ start: 480 * 60 * 1000, end: 1020 * 60 * 1000 }]
 			})
 			expect(event.schedulingMethod).to.equal('flexible')
 			expect(event.scheduledTime).to.equal(undefined)

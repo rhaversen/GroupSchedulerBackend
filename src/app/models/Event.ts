@@ -17,7 +17,7 @@ export interface IMember {
 	 */
 	role: 'creator' | 'admin' | 'participant'
 	/**
-	 * Custom padding after the event for the user, in minutes
+	 * Custom padding after the event for the user, in milliseconds
 	 * This can only be set and seen by the member themselves.
 	 * This is optional and can be used to constrict how soon a new event can be scheduled after this one.
 	 */
@@ -49,9 +49,9 @@ export interface IEvent extends Document {
 	 */
 	schedulingMethod: 'fixed' | 'flexible'
 
-	/** Amount of days the event lasts */
+	/** Duration of the event in milliseconds */
 	duration: number
-	/** Possible times when the event can be scheduled */
+	/** Possible times when the event can be scheduled (milliseconds since epoch) */
 	timeWindow?: ITimeRange
 
 	/** Lifecycle status of the event
@@ -70,7 +70,7 @@ export interface IEvent extends Document {
 	blackoutPeriods?: ITimeRange[]
 	/** Preferred times for the event */
 	preferredTimes?: ITimeRange[]
-	/** Intra-day start constraint for the event, in minutes of the day */
+	/** Intra-day start constraint for the event, in milliseconds of the day */
 	dailyStartConstraints?: ITimeRange[]
 
 	createdAt: Date
@@ -133,7 +133,7 @@ export interface IEventFrontend {
 	schedulingMethod: 'fixed' | 'flexible'
 
 	/**
-	 * Duration of the event in minutes
+	 * Duration of the event in ms
 	 * - This is used to determine how long the event will last.
 	 * - If the schedulingMethod is 'flexible', this will be used to determine available times for the event.
 	 * - If the schedulingMethod is 'fixed', this will be used to determine the end time of the event. It should be calculated as the difference between the start time and a "virtual" end time UI element of the event.
@@ -195,9 +195,9 @@ export interface IEventFrontend {
 	preferredTimes?: ITimeRange[]
 
 	/**
-	 * Intra-day start constraint for the event, in minutes of the day
-	 * - `dailyStartConstraints.start` Start time of the constraint in milliseconds since epoch.
-	 * - `dailyStartConstraints.end` End time of the constraint in milliseconds since epoch.
+	 * Intra-day start constraint for the event, in ms of the day
+	 * - `dailyStartConstraints.start` Start time of the constraint in milliseconds since start of day.
+	 * - `dailyStartConstraints.end` End time of the constraint in milliseconds since start of day.
 	 * - This is used to prevent scheduling the event outside of these times. This only applies to the start time of the event.
 	 * - If the schedulingMethod is 'flexible', this will be used to determine available times for the event.
 	 * - If the schedulingMethod is 'fixed', this will be ignored.
@@ -235,17 +235,17 @@ const timeRangeSchema = new Schema<ITimeRange>({
 	}
 }, { _id: false })
 
-// 0..1440 minute-of-day range for daily start constraints
+// 0..86,400,000 ms-of-day range for daily start constraints
 const dailyRangeSchema = new Schema<ITimeRange>({
 	start: {
 		type: Schema.Types.Number,
 		validate: {
 			validator: function (this: ITimeRange, v: number | undefined) {
 				if (v == null && this.end != null) { return false }
-				if (v != null && (v < 0 || v > 1440)) { return false }
+				if (v != null && (v < 0 || v > 86_400_000)) { return false }
 				return true
 			},
-			message: 'Start must be between 0 and 1440 minutes when end is set'
+			message: 'Start must be between 0 and 86,400,000 milliseconds when end is set'
 		}
 	},
 	end: {
@@ -253,10 +253,10 @@ const dailyRangeSchema = new Schema<ITimeRange>({
 		validate: {
 			validator: function (this: ITimeRange, v: number | undefined) {
 				if (v == null && this.start != null) { return false }
-				if (v != null && (this.start == null || v <= this.start || v > 1440)) { return false }
+				if (v != null && (this.start == null || v === this.start || v < 0 || v > 86_400_000)) { return false }
 				return true
 			},
-			message: 'End must be greater than start and at most 1440'
+			message: 'End must differ from start and be between 0 and 86,400,000 milliseconds'
 		}
 	}
 }, { _id: false })

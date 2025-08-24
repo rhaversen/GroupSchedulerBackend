@@ -42,7 +42,7 @@ await EventModel.create({
 	visibility: 'draft',
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraints: [{ start: 9 * 60, end: 18 * 60 }]
+	dailyStartConstraints: [{ start: 9 * 60 * 60 * 1000, end: 18 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -61,7 +61,7 @@ await EventModel.create({
 	visibility: 'private',
 	blackoutPeriods: [{ start: now + 5 * day + 12 * hour, end: now + 5 * day + 14 * hour }],
 	preferredTimes: [{ start: now + 3 * day + 10 * hour, end: now + 3 * day + 16 * hour }],
-	dailyStartConstraints: [{ start: 10 * 60, end: 17 * 60 }]
+	dailyStartConstraints: [{ start: 10 * 60 * 60 * 1000, end: 17 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -79,7 +79,7 @@ await EventModel.create({
 	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [{ start: now + 7 * day + 14 * hour, end: now + 7 * day + 18 * hour }],
-	dailyStartConstraints: [{ start: 14 * 60, end: 20 * 60 }]
+	dailyStartConstraints: [{ start: 14 * 60 * 60 * 1000, end: 20 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -128,7 +128,7 @@ await EventModel.create({
 	visibility: 'private',
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraints: [{ start: 9 * 60, end: 17 * 60 }]
+	dailyStartConstraints: [{ start: 9 * 60 * 60 * 1000, end: 17 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -152,7 +152,7 @@ await EventModel.create({
 		{ start: now + 10 * day + 9 * hour, end: now + 10 * day + 12 * hour },
 		{ start: now + 12 * day + 14 * hour, end: now + 12 * day + 17 * hour }
 	],
-	dailyStartConstraints: [{ start: 9 * 60, end: 17 * 60 }]
+	dailyStartConstraints: [{ start: 9 * 60 * 60 * 1000, end: 17 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -169,7 +169,7 @@ await EventModel.create({
 	visibility: 'public',
 	blackoutPeriods: [],
 	preferredTimes: [],
-	dailyStartConstraints: [{ start: 10 * 60, end: 18 * 60 }]
+	dailyStartConstraints: [{ start: 10 * 60 * 60 * 1000, end: 18 * 60 * 60 * 1000 }]
 })
 
 await EventModel.create({
@@ -200,7 +200,7 @@ await EventModel.create({
 	visibility: 'public',
 	blackoutPeriods: [{ start: now + 20 * day, end: now + 20 * day + 6 * hour }],
 	preferredTimes: [{ start: now + 15 * day + 9 * hour, end: now + 15 * day + 17 * hour }],
-	dailyStartConstraints: [{ start: 9 * 60, end: 17 * 60 }]
+	dailyStartConstraints: [{ start: 9 * 60 * 60 * 1000, end: 17 * 60 * 60 * 1000 }]
 })
 
 await SessionModel.create({

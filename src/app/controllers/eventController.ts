@@ -89,7 +89,8 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		dailyStartConstraints,
 		visibility,
 		scheduledTime,
-		schedulingMethod
+		schedulingMethod,
+		status: requestedStatus
 	} = req.body as Partial<IEvent>
 
 	// Validate first member is authenticated user
@@ -105,6 +106,20 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
 		availabilityStatus: 'invited'
 	}))
+
+	// Enforce that clients cannot create an invalid confirmed event
+	if (requestedStatus === 'confirmed') {
+		if (schedulingMethod !== 'fixed') {
+			logger.warn('Create event failed: Cannot create confirmed event unless schedulingMethod is fixed')
+			res.status(400).json({ error: 'Confirmed events must use fixed scheduling' })
+			return
+		}
+		if (typeof scheduledTime !== 'number') {
+			logger.warn('Create event failed: Confirmed events must include scheduledTime')
+			res.status(400).json({ error: 'Confirmed events must have a scheduledTime' })
+			return
+		}
+	}
 
 	const status = schedulingMethod === 'flexible' ? 'scheduling' : 'confirmed'
 
