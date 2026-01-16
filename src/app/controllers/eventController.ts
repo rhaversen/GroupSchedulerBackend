@@ -1,7 +1,8 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import mongoose, { FilterQuery } from 'mongoose'
 
-import EventModel, { IEvent, IEventFrontend } from '../models/Event.js'
+import EventModel, { IEvent, IEventFrontend, IMember } from '../models/Event.js'
+import { IEventUpdateRequest } from '../models/EventRequestTypes.js'
 import { IUser } from '../models/User.js'
 import logger from '../utils/logger.js'
 
@@ -15,17 +16,20 @@ export async function transformEvent (
 			description: event.description,
 			members: event.members.map(p => ({
 				userId: p.userId.toString(),
-				role: p.role
+				role: p.role,
+				availabilityStatus: p.availabilityStatus
 			})),
+			schedulingMethod: event.schedulingMethod,
 			timeWindow: event.timeWindow,
 			duration: event.duration,
 			status: event.status,
 			scheduledTime: event.scheduledTime,
-			public: event.public,
+			visibility: event.visibility,
 			blackoutPeriods: event.blackoutPeriods,
 			preferredTimes: event.preferredTimes,
-			createdAt: event.createdAt,
-			updatedAt: event.updatedAt
+			dailyStartConstraints: event.dailyStartConstraints,
+			createdAt: event.createdAt.toISOString(),
+			updatedAt: event.updatedAt.toISOString()
 		}
 	} catch (error) {
 		logger.error(`Error transforming event ID ${event.id}`, { error })
@@ -46,28 +50,22 @@ function isEventParticipant (event: IEvent, userId: string): boolean {
 }
 
 function canAccessEvent (event: IEvent, userId?: string): boolean {
-	// If event is public and not a draft, anyone can access it
-	if (event.public && event.status !== 'draft') {
-		return true
-	}
+	// Public visibility: anyone can access
+	if (event.visibility === 'public') { return true }
 
-	// If no user ID provided, can't access private events
-	if (userId === undefined) {
-		return false
-	}
-
-	// For private events, user must be a participant
-	if (!isEventParticipant(event, userId)) {
-		return false
-	}
-
-	// For draft events, only admins and creators can access
-	if (event.status === 'draft') {
+	// Draft visibility: only admins/creators (must be authenticated)
+	if (event.visibility === 'draft') {
+		if (userId == null) { return false }
 		return isEventAdmin(event, userId) || isEventCreator(event, userId)
 	}
 
-	// For non-draft private events, any participant can access
-	return true
+	// Private visibility: must be participant
+	if (event.visibility === 'private') {
+		if (userId == null) { return false }
+		return isEventParticipant(event, userId)
+	}
+
+	return false
 }
 
 export async function createEvent (req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -87,20 +85,60 @@ export async function createEvent (req: Request, res: Response, next: NextFuncti
 		timeWindow,
 		duration,
 		blackoutPeriods,
-		preferredTimes
-	} = req.body
+		preferredTimes,
+		dailyStartConstraints,
+		visibility,
+		scheduledTime,
+		schedulingMethod,
+		status: requestedStatus
+	} = req.body as Partial<IEvent>
+
+	// Validate first member is authenticated user
+	if (members == null || members.length === 0 || members[0].userId.toString() !== user.id) {
+		logger.warn('Create event failed: First member must be the authenticated user')
+		res.status(400).json({ error: 'First member must be the authenticated user' })
+		return
+	}
+
+	// Build members array with first member as creator
+	const sanitizedMembers: IMember[] = members.map((m, idx) => ({
+		userId: m.userId,
+		role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+		availabilityStatus: 'invited'
+	}))
+
+	// Enforce that clients cannot create an invalid confirmed event
+	if (requestedStatus === 'confirmed') {
+		if (schedulingMethod !== 'fixed') {
+			logger.warn('Create event failed: Cannot create confirmed event unless schedulingMethod is fixed')
+			res.status(400).json({ error: 'Confirmed events must use fixed scheduling' })
+			return
+		}
+		if (typeof scheduledTime !== 'number') {
+			logger.warn('Create event failed: Confirmed events must include scheduledTime')
+			res.status(400).json({ error: 'Confirmed events must have a scheduledTime' })
+			return
+		}
+	}
+
+	const status = schedulingMethod === 'flexible' ? 'scheduling' : 'confirmed'
+
+	const eventData: Partial<IEvent> = {
+		name,
+		description,
+		members: sanitizedMembers,
+		timeWindow,
+		duration,
+		blackoutPeriods,
+		preferredTimes,
+		dailyStartConstraints,
+		visibility,
+		scheduledTime,
+		schedulingMethod,
+		status
+	}
 
 	try {
-		const eventData: Partial<IEvent> = {
-			name,
-			description,
-			members: members ?? [{ userId: user._id, role: 'creator', availabilityStatus: 'available' }],
-			timeWindow,
-			duration,
-			blackoutPeriods: blackoutPeriods ?? [],
-			preferredTimes
-		}
-
 		const newEvent = await EventModel.create(eventData)
 		const transformedEvent = await transformEvent(newEvent)
 
@@ -166,6 +204,7 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 
 	try {
 		const event = await EventModel.findById(eventId, null, { session })
+
 		if (event === null) {
 			logger.warn(`Update event failed: Event not found. ID: ${eventId}`)
 			res.status(404).json({ error: 'Event not found' })
@@ -174,7 +213,19 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (!isEventAdmin(event, user.id) && !isEventCreator(event, user.id)) {
+		// Terminal state: cancelled
+		if (event.status === 'cancelled') {
+			logger.warn(`Update event failed: Event ${eventId} is cancelled and cannot be modified`)
+			res.status(400).json({ error: 'Cannot modify cancelled events' })
+			await session.abortTransaction()
+			await session.endSession()
+			return
+		}
+
+		const userIsCreator = isEventCreator(event, user.id)
+		const userIsAdmin = isEventAdmin(event, user.id)
+
+		if (!userIsAdmin && !userIsCreator) {
 			logger.warn(`Update event failed: User ${user.id} not authorized to edit event ${eventId}`)
 			res.status(403).json({ error: 'Not authorized to edit this event' })
 			await session.abortTransaction()
@@ -182,24 +233,170 @@ export async function updateEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (event.status === 'confirmed') {
-			logger.warn(`Update event failed: Event ${eventId} is confirmed and cannot be modified`)
-			res.status(400).json({ error: 'Cannot modify confirmed events' })
+		const {
+			name,
+			description,
+			members,
+			timeWindow,
+			duration,
+			scheduledTime,
+			visibility,
+			schedulingMethod,
+			blackoutPeriods,
+			preferredTimes,
+			dailyStartConstraints,
+			status
+		} = req.body as Partial<IEventUpdateRequest>
+
+		// Can only update status to confirmed or cancelled
+		if (status != null && status !== 'confirmed' && status !== 'cancelled') {
+			logger.warn(`Update event failed: Invalid status value '${status}' for event ${eventId}`)
+			res.status(400).json({ error: 'Invalid status update' })
+			await session.abortTransaction(); await session.endSession(); return
+		}
+
+		// Semi-terminal state: confirmed
+		// Cannot change scheduled time, duration, timeWindow, schedulingMethod or status
+		const changingScheduledTime = scheduledTime != null && scheduledTime !== event.scheduledTime
+		const changingDuration = duration != null && duration !== event.duration
+		const changingTimeWindow = timeWindow != null && timeWindow !== event.timeWindow
+		const changingSchedulingMethod = schedulingMethod != null && schedulingMethod !== event.schedulingMethod
+		const changingStatus = status != null && status !== event.status
+
+		const isConfirmed = event.status === 'confirmed'
+		const restrictedStatusChange = changingScheduledTime || changingDuration || changingTimeWindow || changingSchedulingMethod || changingStatus
+		if (isConfirmed && restrictedStatusChange) {
+			logger.warn(`Update event failed: Cannot change scheduled time, duration, time window, scheduling method or status for confirmed event ${eventId}`)
+			res.status(400).json({ error: 'Cannot change scheduled time, duration, time window, scheduling method or status for confirmed events' })
+			await session.abortTransaction()
+			await session.endSession()
+			return
+		}
+
+		// If members are being updated, enforce governance incl. additions/removals/role changes
+		if (members != null) {
+			const originalFirst = event.members[0]
+			if (members[0].userId.toString() !== originalFirst.userId.toString() || members[0].role !== 'creator') {
+				logger.warn(`Update event failed: First member must remain the original creator for event ${eventId}`)
+				res.status(400).json({ error: 'First member must remain the original creator' })
+				await session.abortTransaction(); await session.endSession(); return
+			}
+			const currentById = new Map(event.members.map(m => [m.userId.toString(), m]))
+			const proposedById = new Map(members.map(m => [m.userId.toString(), m]))
+			const isOriginalCreator = originalFirst.userId.toString() === user.id
+			for (const [uid, curr] of currentById) {
+				// Check if current member is being removed
+				if (!proposedById.has(uid)) {
+					// Cannot remove original creator
+					if (uid === originalFirst.userId.toString()) {
+						logger.warn(`Update event failed: Cannot remove original creator in event ${eventId}`)
+						res.status(400).json({ error: 'Cannot remove original creator' })
+						await session.abortTransaction(); await session.endSession(); return
+					}
+					// Cannot remove creator or admin unless original creator
+					if (curr.role === 'creator' && !isOriginalCreator) {
+						logger.warn(`Update event failed: Only original creator can remove another creator in event ${eventId}`)
+						res.status(403).json({ error: 'Only the original creator can remove another creator' })
+						await session.abortTransaction(); await session.endSession(); return
+					}
+					// Admins cannot remove creator or admin
+					if (!userIsCreator) {
+						if (curr.role !== 'participant') {
+							logger.warn(`Update event failed: Admin cannot remove ${curr.role} in event ${eventId}`)
+							res.status(403).json({ error: 'Admins can only remove participants' })
+							await session.abortTransaction(); await session.endSession(); return
+						}
+					}
+				}
+			}
+			for (const [uid, proposed] of proposedById) {
+				// Check if proposed member is changing role
+				const current = currentById.get(uid)
+				if (current == null) { continue }
+				const from = current.role
+				const to = proposed.role
+				if (from === to) { continue }
+				// Original creator cannot change role
+				if (uid === originalFirst.userId.toString()) {
+					if (to !== 'creator') {
+						logger.warn(`Update event failed: Original creator role cannot change in event ${eventId}`)
+						res.status(400).json({ error: 'Original creator role cannot be changed' })
+						await session.abortTransaction(); await session.endSession(); return
+					}
+					continue
+				}
+				// Only original creator can demote a creator
+				if (from === 'creator' && to !== 'creator' && !isOriginalCreator) {
+					logger.warn(`Update event failed: Only original creator can demote a creator in event ${eventId}`)
+					res.status(403).json({ error: 'Only the original creator can demote a creator' })
+					await session.abortTransaction(); await session.endSession(); return
+				}
+				// Admins can only demote to participant
+				if (!userIsCreator) {
+					if (!(from === 'admin' && to === 'participant')) {
+						logger.warn(`Update event failed: Admin attempted forbidden role change ${from} -> ${to} in event ${eventId}`)
+						res.status(403).json({ error: 'Admins can only demote admin to participant' })
+						await session.abortTransaction(); await session.endSession(); return
+					}
+				}
+			}
+		}
+
+		// Visibility transition rules:
+		// draft -> public | private | draft
+		// public <-> private
+		if (visibility != null && visibility === 'draft' as unknown && event.visibility !== 'draft') {
+			logger.warn(`Update event failed: Cannot change visibility from ${event.visibility} to draft for event ${eventId}`)
+			res.status(400).json({ error: 'Cannot change visibility to draft once set' })
 			await session.abortTransaction()
 			await session.endSession()
 			return
 		}
 
 		let updateApplied = false
-		const updatableFields: (keyof IEvent)[] = ['name', 'description', 'members', 'timeWindow', 'duration', 'status', 'scheduledTime', 'public', 'blackoutPeriods', 'preferredTimes']
 
-		for (const field of updatableFields) {
-			if (req.body[field] !== undefined) {
-				event.set(field, req.body[field])
-				updateApplied = true
-				logger.debug(`Updating ${field} for event ID ${eventId}`)
-			}
+		// Check if any time constraints changed
+		const timeConstraintsChanged = (
+			(scheduledTime != null && scheduledTime !== event.scheduledTime) ||
+			(timeWindow != null && timeWindow !== event.timeWindow) ||
+			(duration != null && duration !== event.duration) ||
+			(preferredTimes != null && preferredTimes !== event.preferredTimes) ||
+			(blackoutPeriods != null && blackoutPeriods !== event.blackoutPeriods) ||
+			(dailyStartConstraints != null && dailyStartConstraints !== event.dailyStartConstraints)
+		)
+
+		// Check if scheduling method changed to flexible
+		const schedulingMethodChangedToFlexible = (schedulingMethod != null && schedulingMethod !== event.schedulingMethod && schedulingMethod === 'flexible')
+
+		// Downgrade to scheduling if any time constraints change or scheduling method changes to flexible
+		const shouldDowngradeToScheduling = timeConstraintsChanged || schedulingMethodChangedToFlexible
+
+		if (shouldDowngradeToScheduling) {
+			// Clear scheduledTime when constraints change or when moving to scheduling
+			event.status = 'scheduling'
+			event.scheduledTime = undefined
+			updateApplied = true
 		}
+
+		// Build members array with first member as creator
+		const sanitizedMembers: IMember[] | undefined = members?.map((m, idx) => ({
+			userId: m.userId,
+			role: idx === 0 ? 'creator' : (m.role ?? 'participant'),
+			availabilityStatus: event.members.find(p => p.userId.toString() === m.userId)?.availabilityStatus ?? 'invited'
+		}))
+
+		// Explicitly apply allowed simple fields
+		if (name != null) { event.name = name; updateApplied = true }
+		if (description != null) { event.description = description; updateApplied = true }
+		if (duration != null) { event.duration = duration; updateApplied = true	}
+		if (status != null) { event.status = status; updateApplied = true }
+		if (visibility != null) { event.visibility = visibility; updateApplied = true }
+		if (scheduledTime != null) { event.scheduledTime = scheduledTime; updateApplied = true }
+		if (timeWindow != null) { event.timeWindow = timeWindow; updateApplied = true }
+		if (blackoutPeriods != null) { event.blackoutPeriods = blackoutPeriods; updateApplied = true }
+		if (preferredTimes != null) { event.preferredTimes = preferredTimes; updateApplied = true }
+		if (dailyStartConstraints != null) { event.dailyStartConstraints = dailyStartConstraints; updateApplied = true }
+		if (sanitizedMembers != null) { event.members = sanitizedMembers; updateApplied = true }
 
 		if (!updateApplied) {
 			logger.info(`Update event: No changes detected for event ID ${eventId}`)
@@ -249,15 +446,10 @@ export async function deleteEvent (req: Request, res: Response, next: NextFuncti
 			return
 		}
 
-		if (!isEventAdmin(event, user.id) && !isEventCreator(event, user.id)) {
+		// Only the creator can delete the event
+		if (!isEventCreator(event, user.id)) {
 			logger.warn(`Delete event failed: User ${user.id} not authorized to delete event ${eventId}`)
 			res.status(403).json({ error: 'Not authorized to delete this event' })
-			return
-		}
-
-		if (event.status === 'confirmed') {
-			logger.warn(`Delete event failed: Event ${eventId} is confirmed and cannot be deleted`)
-			res.status(400).json({ error: 'Cannot delete confirmed events' })
 			return
 		}
 
@@ -275,9 +467,10 @@ export async function deleteEvent (req: Request, res: Response, next: NextFuncti
 	}
 }
 
-interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; public?: boolean; status?: string[]; limit: number; offset: number }
+interface IGetEventsQuery { createdBy?: string; adminOf?: string; participantOf?: string; memberOf?: string; visibility?: string[]; status?: string[]; limit: number; offset: number }
 interface IGetEventsResponse { events: IEventFrontend[]; total: number }
-const VALID_STATUSES = ['draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled']
+const VALID_STATUSES = ['scheduling', 'confirmed', 'cancelled']
+const VALID_VISIBILITY = ['draft', 'public', 'private']
 
 export async function getEvents (req: Request, res: Response, next: NextFunction): Promise<void> {
 	logger.debug('Getting events with query', { query: req.query })
@@ -287,7 +480,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf,
 			participantOf,
 			memberOf,
-			public: publicFlag,
+			visibility: visibilityParam,
 			status,
 			limit,
 			offset
@@ -301,7 +494,11 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 			adminOf: takeFirst(adminOf),
 			participantOf: takeFirst(participantOf),
 			memberOf: takeFirst(memberOf),
-			public: (() => { const v = takeFirst(publicFlag); if (v === 'true') { return true } if (v === 'false') { return false } return undefined })(),
+			visibility: (() => {
+				const raw = parseIds(visibilityParam)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
+				const filtered = raw?.filter(s => VALID_VISIBILITY.includes(s))
+				return filtered && filtered.length ? filtered : undefined
+			})(),
 			status: (() => {
 				const raw = parseIds(status)?.flatMap(s => s.split(',')).map(s => s.trim()).filter(Boolean)
 				const filtered = raw?.filter(s => VALID_STATUSES.includes(s))
@@ -315,7 +512,7 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		const filter: FilterQuery<IEvent> = {}
 		const and: FilterQuery<IEvent>[] = []
 
-		if (q.public !== undefined) { and.push({ public: q.public }) }
+		if (q.visibility?.length != null) { and.push({ visibility: q.visibility.length === 1 ? q.visibility[0] : { $in: q.visibility } }) }
 		if (q.status?.length != null) { and.push({ status: q.status.length === 1 ? q.status[0] : { $in: q.status } }) }
 
 		const roleMatch = (id: string, role: string): FilterQuery<IEvent> => ({ members: { $elemMatch: { userId: new mongoose.Types.ObjectId(id), role } } })
@@ -324,15 +521,15 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		if (q.participantOf != null) { and.push(roleMatch(q.participantOf, 'participant')) }
 		if (q.memberOf != null) { and.push({ 'members.userId': new mongoose.Types.ObjectId(q.memberOf) }) }
 
-		const visibility: FilterQuery<IEvent>[] = [{ public: true, status: { $ne: 'draft' } }]
+		const visibilityAccess: FilterQuery<IEvent>[] = [{ visibility: 'public' }]
 		if (viewerId != null) {
 			const vObj = new mongoose.Types.ObjectId(viewerId)
-			visibility.push(
-				{ status: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
-				{ public: false, status: { $ne: 'draft' }, 'members.userId': vObj }
+			visibilityAccess.push(
+				{ visibility: 'draft', members: { $elemMatch: { userId: vObj, role: { $in: ['creator', 'admin'] } } } },
+				{ visibility: 'private', 'members.userId': vObj }
 			)
 		}
-		and.push({ $or: visibility })
+		and.push({ $or: visibilityAccess })
 
 		const finalFilter = and.length ? { $and: and } : filter
 
@@ -360,81 +557,3 @@ export async function getEvents (req: Request, res: Response, next: NextFunction
 		}
 	}
 }
-
-export async function updateParticipantRole (req: Request, res: Response, next: NextFunction): Promise<void> {
-	const eventId = req.params.id
-	const { userId, role: newRole } = req.body
-	logger.info(`Attempting to update participant role in event: ID ${eventId}`)
-
-	const user = req.user as IUser | undefined
-	if (user === undefined) {
-		logger.warn(`Update participant role failed: Unauthorized request for ID ${eventId}`)
-		res.status(401).json({ error: 'Unauthorized' })
-		return
-	}
-
-	const session = await mongoose.startSession()
-	session.startTransaction()
-
-	try {
-		const event = await EventModel.findById(eventId, null, { session })
-		if (event === null) {
-			logger.warn(`Update participant role failed: Event not found. ID: ${eventId}`)
-			res.status(404).json({ error: 'Event not found' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
-		}
-
-		const userIsCreator = isEventCreator(event, user.id)
-		const userIsAdmin = isEventAdmin(event, user.id)
-
-		if (!userIsAdmin && !userIsCreator) {
-			logger.warn(`Update participant role failed: User ${user.id} not authorized to modify roles in event ${eventId}`)
-			res.status(403).json({ error: 'Only admins and creators can modify participant roles' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
-		}
-
-		const memberIndex = event.members.findIndex(p => p.userId.toString() === userId)
-		if (memberIndex === -1) {
-			logger.warn(`Update participant role failed: User ${userId} not found in event ${eventId}`)
-			res.status(404).json({ error: 'Participant not found in event' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
-		}
-
-		const targetParticipant = event.members[memberIndex]
-
-		// Only creators can modify creator roles
-		if ((newRole === 'creator' || targetParticipant.role === 'creator') && !userIsCreator) {
-			logger.warn(`Update participant role failed: User ${user.id} cannot modify creator role in event ${eventId}`)
-			res.status(403).json({ error: 'Only creators can modify creator roles' })
-			await session.abortTransaction()
-			await session.endSession()
-			return
-		}
-
-		event.members[memberIndex].role = newRole
-		await event.validate()
-		await event.save({ session })
-		await session.commitTransaction()
-
-		const transformedEvent = await transformEvent(event)
-		logger.info(`Participant role updated successfully in event: ID ${eventId}`)
-		res.status(200).json(transformedEvent)
-	} catch (error) {
-		await session.abortTransaction()
-		logger.error(`Update participant role failed: Error updating role in event ID ${eventId}`, { error })
-		if (error instanceof mongoose.Error.ValidationError || error instanceof mongoose.Error.CastError) {
-			res.status(400).json({ error: error.message })
-		} else {
-			next(error)
-		}
-	} finally {
-		await session.endSession()
-	}
-}
-

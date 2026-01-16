@@ -13,16 +13,14 @@ import '../../testSetup.js'
 
 describe('Event Model', function () {
 	let testUser: IUser
-	let testEventFields: {
+	let fixedEventFields: {
 		name: string
 		description: string
 		members: IMember[]
 		duration: number
-		timeWindow: {
-			start: number
-			end: number
-		}
-		public: boolean
+		timeWindow: { start: number; end: number }
+		visibility: 'draft' | 'public' | 'private'
+		scheduledTime: number
 	}
 
 	beforeEach(async function () {
@@ -32,10 +30,10 @@ describe('Event Model', function () {
 			password: 'testPassword123'
 		})
 
-		const futureStart = Date.now() + 86400000 // 1 day from now
-		const futureEnd = futureStart + 604800000 // 7 days later
+		const futureStart = Date.now() + 86400000
+		const futureEnd = futureStart + 604800000
 
-		testEventFields = {
+		fixedEventFields = {
 			name: 'Test Event',
 			description: 'A test event description',
 			members: [{
@@ -43,33 +41,35 @@ describe('Event Model', function () {
 				role: 'creator',
 				availabilityStatus: 'available'
 			}],
-			duration: 3600000, // 1 hour
-			timeWindow: {
-				start: futureStart,
-				end: futureEnd
-			},
-			public: false
+			duration: 3600000,
+			timeWindow: { start: futureStart, end: futureEnd },
+			visibility: 'draft',
+			scheduledTime: futureStart + 1800000
 		}
 	})
 
-	describe('Event Creation', function () {
-		it('should create a valid event', async function () {
-			const event = await EventModel.create(testEventFields)
+	describe('Fixed scheduling', function () {
+		it('should create a valid fixed event and strip constraints', async function () {
+			const event = await EventModel.create(fixedEventFields)
 			expect(event).to.exist
-			expect(event.name).to.equal(testEventFields.name)
-			expect(event.description).to.equal(testEventFields.description)
+			expect(event.name).to.equal(fixedEventFields.name)
+			expect(event.description).to.equal(fixedEventFields.description)
 			expect(event.members).to.have.lengthOf(1)
 			expect(event.members[0].userId.toString()).to.equal(testUser._id.toString())
 			expect(event.members[0].role).to.equal('creator')
-			expect(event.duration).to.equal(testEventFields.duration)
-			expect(event.status).to.equal('draft')
-			expect(event.public).to.be.false
-			expect(event.blackoutPeriods).to.be.an('array').that.is.empty
+			expect(event.duration).to.equal(fixedEventFields.duration)
+			expect(event.status).to.equal('confirmed')
+			expect(event.visibility).to.equal('draft')
+			expect(event.timeWindow).to.equal(undefined)
+			expect(event.blackoutPeriods).to.equal(undefined)
+			expect(event.preferredTimes).to.equal(undefined)
+			expect(event.dailyStartConstraints).to.equal(undefined)
+			expect(event.scheduledTime).to.equal(fixedEventFields.scheduledTime)
 		})
 
 		it('should trim event name', async function () {
 			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				name: '  Trimmed Event  '
 			})
 			expect(event.name).to.equal('Trimmed Event')
@@ -77,417 +77,263 @@ describe('Event Model', function () {
 
 		it('should trim event description', async function () {
 			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				description: '  Trimmed description  '
 			})
 			expect(event.description).to.equal('Trimmed description')
 		})
 
-		it('should default status to draft', async function () {
-			const event = await EventModel.create(testEventFields)
-			expect(event.status).to.equal('draft')
+		it('should default status to confirmed', async function () {
+			const event = await EventModel.create(fixedEventFields)
+			expect(event.status).to.equal('confirmed')
 		})
 
-		it('should default public to false', async function () {
+		it('should default visibility to draft', async function () {
 			const event = await EventModel.create({
-				...testEventFields,
-				public: undefined
+				...fixedEventFields,
+				visibility: undefined
 			})
-			expect(event.public).to.be.false
+			expect(event.visibility).to.equal('draft')
 		})
-	})
 
-	describe('Event Validation', function () {
-		it('should not create event without name', async function () {
+		it('should strip blackout and preferred times if provided', async function () {
+			const event = await EventModel.create({
+				...fixedEventFields,
+				blackoutPeriods: [{ start: 100, end: 200 }],
+				preferredTimes: [{ start: 300, end: 400 }],
+				dailyStartConstraints: [{ start: 480 * 60 * 1000, end: 1020 * 60 * 1000 }]
+			})
+			expect(event.timeWindow).to.equal(undefined)
+			expect(event.blackoutPeriods).to.equal(undefined)
+			expect(event.preferredTimes).to.equal(undefined)
+			expect(event.dailyStartConstraints).to.equal(undefined)
+		})
+
+		it('should require at least one member and a creator', async function () {
 			let errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					name: undefined
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event without description', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					description: undefined
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event without members', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
+					...fixedEventFields,
 					members: []
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
-		})
 
-		it('should not create event without creator', async function () {
-			let errorOccurred = false
+			errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					members: [{
-						userId: testUser._id,
-						role: 'participant',
-						availabilityStatus: 'available'
-					}]
+					...fixedEventFields,
+					members: [{ userId: testUser._id, role: 'participant', availabilityStatus: 'available' }]
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
 		})
 
-		it('should not create event with name too short', async function () {
+		it('should validate name/description/duration bounds', async function () {
+			// name too short
 			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					name: ''
-				})
-			} catch {
-				errorOccurred = true
-			}
+			try { await EventModel.create({ ...fixedEventFields, name: '' }) } catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// name too long
+			errorOccurred = false
+			try { await EventModel.create({ ...fixedEventFields, name: 'a'.repeat(101) }) } catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// description too long
+			errorOccurred = false
+			try { await EventModel.create({ ...fixedEventFields, description: 'a'.repeat(1001) }) } catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// duration too short
+			errorOccurred = false
+			try { await EventModel.create({ ...fixedEventFields, duration: 59999 }) } catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
 		})
 
-		it('should not create event with name too long', async function () {
+		it('should reject invalid role/status/availability/custom padding', async function () {
 			let errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					name: 'a'.repeat(101)
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event with description too long', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					description: 'a'.repeat(1001)
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event with duration too short', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					duration: 59999 // Less than 1 minute
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event with timeWindow start in the past', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					timeWindow: {
-						start: Date.now() - 86400000, // Yesterday
-						end: Date.now() + 86400000
-					}
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event with timeWindow end before start', async function () {
-			let errorOccurred = false
-			try {
-				const futureTime = Date.now() + 86400000
-				await EventModel.create({
-					...testEventFields,
-					timeWindow: {
-						start: futureTime,
-						end: futureTime - 3600000 // 1 hour before start
-					}
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not create event with invalid status', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
+					...fixedEventFields,
 					status: 'invalid'
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
-		})
 
-		it('should not create event with invalid member role', async function () {
-			let errorOccurred = false
+			errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					members: [{
-						userId: testUser._id,
-						role: 'invalid',
-						availabilityStatus: 'available'
-					}]
+					...fixedEventFields,
+					members: [{ userId: testUser._id, role: 'invalid', availabilityStatus: 'available' }]
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
-		})
 
-		it('should not create event with invalid availability status', async function () {
-			let errorOccurred = false
+			errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					members: [{
-						userId: testUser._id,
-						role: 'creator',
-						availabilityStatus: 'invalid'
-					}]
+					...fixedEventFields,
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'invalid' }]
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
-		})
 
-		it('should not create event with negative custom padding', async function () {
-			let errorOccurred = false
+			errorOccurred = false
 			try {
 				await EventModel.create({
-					...testEventFields,
-					members: [{
-						userId: testUser._id,
-						role: 'creator',
-						availabilityStatus: 'available',
-						customPaddingAfter: -1
-					}]
+					...fixedEventFields,
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available', customPaddingAfter: -1 }]
 				})
-			} catch {
-				errorOccurred = true
-			}
+			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
 		})
-	})
 
-	describe('Scheduled Time Validation', function () {
-		it('should allow valid scheduled time within window', async function () {
-			const scheduledTime = testEventFields.timeWindow.start + 3600000 // 1 hour after start
+		it('should handle multiple members and defaults', async function () {
+			const secondUser = await UserModel.create({ username: 'secondUser', email: 'second@example.com', password: 'password123' })
 			const event = await EventModel.create({
-				...testEventFields,
-				scheduledTime
-			})
-			expect(event.scheduledTime).to.equal(scheduledTime)
-		})
-
-		it('should not allow scheduled time before window start', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					scheduledTime: testEventFields.timeWindow.start - 3600000 // 1 hour before start
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not allow scheduled time that would end after window end', async function () {
-			let errorOccurred = false
-			try {
-				const scheduledTime = testEventFields.timeWindow.end - 1800000 // 30 minutes before end, but event is 1 hour long
-				await EventModel.create({
-					...testEventFields,
-					scheduledTime
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-	})
-
-	describe('Blackout and Preferred Times', function () {
-		it('should allow valid blackout periods', async function () {
-			const event = await EventModel.create({
-				...testEventFields,
-				blackoutPeriods: [
-					{ start: 100, end: 200 },
-					{ start: 300, end: 400 }
-				]
-			})
-			expect(event.blackoutPeriods).to.have.lengthOf(2)
-			expect(event.blackoutPeriods[0].start).to.equal(100)
-			expect(event.blackoutPeriods[0].end).to.equal(200)
-		})
-
-		it('should allow valid preferred times', async function () {
-			const event = await EventModel.create({
-				...testEventFields,
-				preferredTimes: [
-					{ start: 100, end: 200 },
-					{ start: 300, end: 400 }
-				]
-			})
-			expect(event.preferredTimes).to.have.lengthOf(2)
-			expect(event.preferredTimes![0].start).to.equal(100)
-			expect(event.preferredTimes![0].end).to.equal(200)
-		})
-
-		it('should not allow blackout period with start >= end', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					blackoutPeriods: [{ start: 200, end: 100 }]
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not allow preferred time with start >= end', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					preferredTimes: [{ start: 200, end: 100 }]
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not allow blackout period with negative start time', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					blackoutPeriods: [{ start: -100, end: 100 }]
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-
-		it('should not allow blackout period with zero start time', async function () {
-			let errorOccurred = false
-			try {
-				await EventModel.create({
-					...testEventFields,
-					blackoutPeriods: [{ start: 0, end: 100 }]
-				})
-			} catch {
-				errorOccurred = true
-			}
-			expect(errorOccurred).to.be.true
-		})
-	})
-
-	describe('Multiple Members', function () {
-		it('should allow multiple members with different roles', async function () {
-			const secondUser = await UserModel.create({
-				username: 'secondUser',
-				email: 'second@example.com',
-				password: 'password123'
-			})
-
-			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				members: [
-					{
-						userId: testUser._id,
-						role: 'creator',
-						availabilityStatus: 'available'
-					},
-					{
-						userId: secondUser._id,
-						role: 'participant',
-						availabilityStatus: 'tentative'
-					}
+					{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' },
+					{ userId: secondUser._id, availabilityStatus: 'available' }
 				]
 			})
-
 			expect(event.members).to.have.lengthOf(2)
-			expect(event.members.find(m => m.role === 'creator')).to.exist
-			expect(event.members.find(m => m.role === 'participant')).to.exist
-		})
-
-		it('should default member role to participant', async function () {
-			const secondUser = await UserModel.create({
-				username: 'secondUser',
-				email: 'second@example.com',
-				password: 'password123'
-			})
-
-			const event = await EventModel.create({
-				...testEventFields,
-				members: [
-					{
-						userId: testUser._id,
-						role: 'creator',
-						availabilityStatus: 'available'
-					},
-					{
-						userId: secondUser._id,
-						availabilityStatus: 'available'
-					}
-				]
-			})
-
 			const participant = event.members.find(m => m.userId.toString() === secondUser._id.toString())
 			expect(participant!.role).to.equal('participant')
+			expect(event.members[0].availabilityStatus).to.be.oneOf(['available', 'invited'])
+		})
+	})
+
+	describe('Flexible scheduling', function () {
+		it('should create a flexible event with constraints', async function () {
+			const futureStart = Date.now() + 86400000
+			const futureEnd = futureStart + 604800000
+			const event = await EventModel.create({
+				name: 'Flex',
+				members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+				schedulingMethod: 'flexible',
+				duration: 3600000,
+				timeWindow: { start: futureStart, end: futureEnd },
+				blackoutPeriods: [{ start: 100, end: 200 }],
+				preferredTimes: [{ start: 300, end: 400 }],
+				dailyStartConstraints: [{ start: 480 * 60 * 1000, end: 1020 * 60 * 1000 }]
+			})
+			expect(event.schedulingMethod).to.equal('flexible')
+			expect(event.scheduledTime).to.equal(undefined)
+			expect(event.timeWindow).to.exist
+			expect(event.blackoutPeriods).to.have.lengthOf(1)
+			expect(event.preferredTimes).to.have.lengthOf(1)
+			expect(event.dailyStartConstraints).to.have.lengthOf(1)
 		})
 
-		it('should default availability status to tentative', async function () {
-			const event = await EventModel.create({
-				...testEventFields,
-				members: [{
-					userId: testUser._id,
-					role: 'creator'
-				}]
-			})
+		it('should not create flexible event with timeWindow start in the past', async function () {
+			let errorOccurred = false
+			try {
+				const futureEnd = Date.now() + 86400000
+				await EventModel.create({
+					name: 'Flex Past',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: Date.now() - 86400000, end: futureEnd }
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+		})
 
-			expect(event.members[0].availabilityStatus).to.equal('tentative')
+		it('should enforce scheduledTime within timeWindow (before start)', async function () {
+			let errorOccurred = false
+			const futureStart = Date.now() + 86400000
+			const futureEnd = futureStart + 604800000
+			try {
+				await EventModel.create({
+					name: 'Flex Scheduled',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					scheduledTime: futureStart - 3600000
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+		})
+
+		it('should enforce scheduledTime within timeWindow (ends after end)', async function () {
+			let errorOccurred = false
+			const futureStart = Date.now() + 86400000
+			const futureEnd = futureStart + 604800000
+			try {
+				await EventModel.create({
+					name: 'Flex Scheduled 2',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					scheduledTime: futureEnd - 1800000
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+		})
+
+		it('should validate blackout and preferred time ranges', async function () {
+			// start >= end
+			let errorOccurred = false
+			const futureStart = Date.now() + 86400000
+			const futureEnd = futureStart + 604800000
+			try {
+				await EventModel.create({
+					name: 'Flex Bad Blackout',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					blackoutPeriods: [{ start: 200, end: 100 }]
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// preferred start >= end
+			errorOccurred = false
+			try {
+				await EventModel.create({
+					name: 'Flex Bad Preferred',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					preferredTimes: [{ start: 200, end: 100 }]
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// negative start
+			errorOccurred = false
+			try {
+				await EventModel.create({
+					name: 'Flex Negative Start',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					blackoutPeriods: [{ start: -100, end: 100 }]
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
+
+			// zero start
+			errorOccurred = false
+			try {
+				await EventModel.create({
+					name: 'Flex Zero Start',
+					members: [{ userId: testUser._id, role: 'creator', availabilityStatus: 'available' }],
+					schedulingMethod: 'flexible',
+					duration: 3600000,
+					timeWindow: { start: futureStart, end: futureEnd },
+					blackoutPeriods: [{ start: 0, end: 100 }]
+				})
+			} catch { errorOccurred = true }
+			expect(errorOccurred).to.be.true
 		})
 	})
 })

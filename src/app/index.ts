@@ -111,10 +111,12 @@ Sentry.setupExpressErrorHandler(app)
 // Global error handler middleware
 app.use(globalErrorHandler)
 
-// Listen
-server.listen(expressPort, () => {
-	logger.info(`Express is listening at http://localhost:${expressPort}`)
-})
+// Listen only outside test environment; test harness will start server
+if (NODE_ENV !== 'test') {
+	server.listen(expressPort, () => {
+		logger.info(`Express is listening at http://localhost:${expressPort}`)
+	})
+}
 
 // Handle unhandled rejections outside middleware
 process.on('unhandledRejection', async (reason, promise): Promise<void> => {
@@ -127,8 +129,10 @@ process.on('unhandledRejection', async (reason, promise): Promise<void> => {
 // Handle uncaught exceptions outside middleware
 process.on('uncaughtException', async (err): Promise<void> => {
 	logger.error('Uncaught exception', { error: err })
-	// eslint-disable-next-line n/no-process-exit
-	process.exit(1) // Exit the process with failure code
+	if (process.env.NODE_ENV !== 'test') {
+		// eslint-disable-next-line n/no-process-exit
+		process.exit(1)
+	}
 })
 
 // Shutdown function
