@@ -16,8 +16,6 @@ const {
 // Interfaces
 export interface IUser extends Document {
 	// Properties
-	/** ID of the user */
-	_id: Schema.Types.ObjectId
 	id: string
 	/** Username of the user */
 	username: string

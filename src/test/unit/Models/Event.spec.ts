@@ -39,7 +39,8 @@ describe('Event Model', function () {
 			name: 'Test Event',
 			description: 'A test event description',
 			members: [{
-				userId: testUser._id,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				userId: testUser._id.toString() as any,
 				role: 'creator',
 				availabilityStatus: 'available'
 			}],
@@ -59,7 +60,7 @@ describe('Event Model', function () {
 			expect(event.name).to.equal(testEventFields.name)
 			expect(event.description).to.equal(testEventFields.description)
 			expect(event.members).to.have.lengthOf(1)
-			expect(event.members[0].userId.toString()).to.equal(testUser._id.toString())
+			expect(event.members[0].userId.toString()).to.equal(testUser.id.toString())
 			expect(event.members[0].role).to.equal('creator')
 			expect(event.duration).to.equal(testEventFields.duration)
 			expect(event.status).to.equal('draft')
@@ -143,7 +144,7 @@ describe('Event Model', function () {
 				await EventModel.create({
 					...testEventFields,
 					members: [{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'participant',
 						availabilityStatus: 'available'
 					}]
@@ -258,7 +259,7 @@ describe('Event Model', function () {
 				await EventModel.create({
 					...testEventFields,
 					members: [{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'invalid',
 						availabilityStatus: 'available'
 					}]
@@ -275,7 +276,7 @@ describe('Event Model', function () {
 				await EventModel.create({
 					...testEventFields,
 					members: [{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'creator',
 						availabilityStatus: 'invalid'
 					}]
@@ -292,7 +293,7 @@ describe('Event Model', function () {
 				await EventModel.create({
 					...testEventFields,
 					members: [{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'creator',
 						availabilityStatus: 'available',
 						customPaddingAfter: -1
@@ -435,7 +436,7 @@ describe('Event Model', function () {
 				...testEventFields,
 				members: [
 					{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'creator',
 						availabilityStatus: 'available'
 					},
@@ -463,7 +464,7 @@ describe('Event Model', function () {
 				...testEventFields,
 				members: [
 					{
-						userId: testUser._id,
+						userId: testUser.id,
 						role: 'creator',
 						availabilityStatus: 'available'
 					},
@@ -482,7 +483,7 @@ describe('Event Model', function () {
 			const event = await EventModel.create({
 				...testEventFields,
 				members: [{
-					userId: testUser._id,
+					userId: testUser.id,
 					role: 'creator'
 				}]
 			})
