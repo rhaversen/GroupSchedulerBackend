@@ -5,6 +5,7 @@
 
 import { expect } from 'chai'
 import { describe, it } from 'mocha'
+import { Schema } from 'mongoose'
 
 import EventModel, { type IMember } from '../../../app/models/Event.js'
 import UserModel, { IUser } from '../../../app/models/User.js'
@@ -39,7 +40,7 @@ describe('Event Model', function () {
 			name: 'Test Event',
 			description: 'A test event description',
 			members: [{
-				userId: testUser._id,
+				userId: new Schema.Types.ObjectId(testUser._id.toString()),
 				role: 'creator',
 				availabilityStatus: 'available'
 			}],
