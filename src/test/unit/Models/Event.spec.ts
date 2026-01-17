@@ -39,7 +39,8 @@ describe('Event Model', function () {
 			name: 'Test Event',
 			description: 'A test event description',
 			members: [{
-				userId: testUser.id,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				userId: testUser._id.toString() as any,
 				role: 'creator',
 				availabilityStatus: 'available'
 			}],
