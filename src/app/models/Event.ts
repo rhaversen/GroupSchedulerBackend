@@ -13,7 +13,6 @@ export interface IMember {
 }
 
 export interface IEvent extends Document {
-	_id: Schema.Types.ObjectId
 	id: string
 
 	/** Name of the event */

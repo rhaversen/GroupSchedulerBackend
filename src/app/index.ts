@@ -71,15 +71,18 @@ const sessionStore = MongoStore.create({
 	autoRemoveInterval: 1 // 1 minute
 })
 
-// Apply session management middleware
-app.use(session({ // Session management
+// Create session middleware
+const sessionMiddleware = session({ // Session management
 	resave: true, // Save the updated session back to the store
 	rolling: true, // Reset the cookie max-age on every request
 	secret: SESSION_SECRET, // Secret for signing session ID cookie
 	saveUninitialized: false, // Do not save session if not authenticated
 	store: sessionStore, // Store session in MongoDB
 	cookie: cookieOptions
-}))
+})
+
+// Apply session management middleware
+app.use(sessionMiddleware)
 
 // Apply and configure Passport middleware
 app.use(passport.initialize()) // Initialize Passport
@@ -120,15 +123,19 @@ server.listen(expressPort, () => {
 process.on('unhandledRejection', async (reason, promise): Promise<void> => {
 	const errorMessage = reason instanceof Error ? reason.message : String(reason)
 	logger.error(`Unhandled Rejection: ${errorMessage}`, { reason, promise })
-	// eslint-disable-next-line n/no-process-exit
-	process.exit(1) // Exit the process with failure code
+	if (NODE_ENV !== 'test') {
+		// eslint-disable-next-line n/no-process-exit
+		process.exit(1) // Exit the process with failure code
+	}
 })
 
 // Handle uncaught exceptions outside middleware
 process.on('uncaughtException', async (err): Promise<void> => {
 	logger.error('Uncaught exception', { error: err })
-	// eslint-disable-next-line n/no-process-exit
-	process.exit(1) // Exit the process with failure code
+	if (NODE_ENV !== 'test') {
+		// eslint-disable-next-line n/no-process-exit
+		process.exit(1) // Exit the process with failure code
+	}
 })
 
 // Shutdown function
