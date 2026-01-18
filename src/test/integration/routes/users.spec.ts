@@ -76,7 +76,7 @@ describe('User routes', function () {
 	describe('Password update', function () {
 		it('should update password with correct currentPassword', async function () {
 			const { res, cookie } = await registerUser()
-			const userId = res.body.user._id
+			const _userId = res.body.user._id
 			const pwRes = await agent().patch('/api/v1/users/me/password').set('Cookie', cookie).send({ currentPassword: baseUser.password, newPassword: 'newPass', confirmNewPassword: 'newPass' })
 			expect(pwRes).to.have.status(200)
 			// login with new password (register endpoint logs in; we need a fresh session via login-user-local)
