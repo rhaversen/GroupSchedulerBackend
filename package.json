@@ -59,7 +59,7 @@
 		"@types/express-session": "^1.18.1",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "^24.0.0",
-		"@types/nodemailer": "^6.4.17",
+		"@types/nodemailer": "^7.0.5",
 		"@types/passport": "^1.0.17",
 		"@types/passport-local": "^1.0.38",
 		"@types/sinon": "^17.0.4",
