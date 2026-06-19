@@ -6,8 +6,7 @@ import {
 	deleteEvent,
 	getEvent,
 	getEvents,
-	updateEvent,
-	updateParticipantRole
+	updateEvent
 } from '../controllers/eventController.js'
 import {
 	getUserEventSettings,
@@ -22,18 +21,18 @@ const router = Router()
  * @access Private
  * @param {string} req.body.name - The name of the event.
  * @param {string} req.body.description - The description of the event.
- * @param {Object[]} [req.body.members] - Array of member objects with userId, role, and settings (optional, defaults to creator).
+ * @param {Object[]} [req.body.members] - Array of member objects with userId and role (optional). First element MUST be posting user with role 'creator'. Availability & padding ignored here.
  * @param {string} req.body.members[].userId - User ID of the participant.
  * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
- * @param {Object} req.body.timeWindow - Time window for the event.
- * @param {number} req.body.timeWindow.start - Start time (Unix ms).
- * @param {number} req.body.timeWindow.end - End time (Unix ms).
+ * NOTE: customPaddingAfter and availabilityStatus (including 'invited') cannot be set on creation; defaults to 'invited' until user updates via settings endpoint.
+ * @param {Object} [req.body.timeWindow] - Time window for the event. Required unless creating a confirmed event with scheduledTime (then derived from scheduledTime+duration).
+ * @param {number} [req.body.timeWindow.start] - Start time (Unix ms).
+ * @param {number} [req.body.timeWindow.end] - End time (Unix ms).
  * @param {number} req.body.duration - Duration in milliseconds.
- * @param {boolean} [req.body.public] - Whether the event is public (optional, defaults to false).
+* @param {string} [req.body.visibility] - Visibility of the event: 'draft' | 'public' | 'private' (default 'draft').
  * @param {Array<{start:number,end:number}>} [req.body.blackoutPeriods] - Blackout time ranges.
  * @param {Array<{start:number,end:number}>} [req.body.preferredTimes] - Preferred time ranges.
+ * @param {Array<{start:number,end:number}>} [req.body.dailyStartConstraints] - Intra-day start time ranges (milliseconds of day, 0-86,400,000).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The created event object.
  */
@@ -65,11 +64,11 @@ router.post('/',
  *      Return events where this userId appears in members with any role (creator | admin | participant).
  *      (If provided together with createdBy/adminOf/participantOf, intersection semantics apply.)
  *
- *  - public: 'true' | 'false'
- *      Filter by publicity flag.
+*  - visibility: string | string[]
+*      One or multiple visibility values (draft | public | private) (comma-separated or repeated parameter).
  *
- *  - status: string | string[]
- *      One or multiple event status values (draft | scheduling | scheduled | confirmed | cancelled).
+*  - status: string | string[]
+*      One or multiple event status values (scheduling | confirmed | cancelled).
  *      Accept either repeated query parameters (?status=a&status=b) or a comma-separated list (?status=a,b).
  *
  *  - limit: number (default 50, max 200)
@@ -86,8 +85,8 @@ router.post('/',
  *
  * Notes:
  *  - Apply authorization constraints before final pagination.
- *  - If both public=true and a non-public-only user filter are given, intersection still applies (likely yielding only public events among that user set).
- *  - For performance, build a compound query using indexes on (public, status), members.userId, members.role, createdBy.
+*  - Draft visibility events returned only to creator/admin. Private events returned only to members. Public events returned to all.
+*  - For performance, ensure indexes on (visibility, status), members.userId, members.role.
  *
  * Example Requests
 	My managed events (creator or admin): choose either two filters or expose a convenience on frontend:
@@ -95,9 +94,9 @@ router.post('/',
 	/api/v1/events?adminOf=ME (Frontend can merge results, or you can first call with memberOf=ME and filter roles client-side.)
 	Events I participate in (non-admin): /api/v1/events?participantOf=ME
 	Any events I am in: /api/v1/events?memberOf=ME
-	Public events: /api/v1/events?public=true&limit=20
-	Public scheduled events: /api/v1/events?public=true&status=scheduled
-	Multiple statuses: /api/v1/events?status=scheduled,confirmed
+	Public events: /api/v1/events?visibility=public&limit=20
+	Public confirmed events: /api/v1/events?visibility=public&status=confirmed
+	Multiple statuses: /api/v1/events?status=confirmed,cancelled
  */
 router.get('/',
 	getEvents
@@ -106,13 +105,12 @@ router.get('/',
 /**
  * @route GET /api/v1/events/:id
  * @description Get event by ID.
- * @access Private (members only)
+ * @access Public (limited info) / Private (full info for members)
  * @param {string} req.params.id - The ID of the event.
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The event object.
  */
 router.get('/:id',
-	ensureAuthenticated,
 	getEvent
 )
 
@@ -123,20 +121,20 @@ router.get('/:id',
  * @param {string} req.params.id - The ID of the event.
  * @param {string} [req.body.name] - The new name (optional).
  * @param {string} [req.body.description] - The new description (optional).
- * @param {Object[]} [req.body.members] - Array of participant objects with userId, role, and settings (optional).
+ * @param {Object[]} [req.body.members] - Array of participant objects with userId and role only (availability & padding ignored). First element MUST remain the original creator.
  * @param {string} req.body.members[].userId - User ID of the participant.
  * @param {string} req.body.members[].role - Role of the participant ('creator', 'admin', 'participant').
- * @param {number} [req.body.members[].customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.members[].availabilityStatus] - Availability status ('available', 'unavailable', 'tentative').
+ * NOTE: customPaddingAfter and availabilityStatus (including 'invited') cannot be modified via this route; use /:eventId/settings as the participant.
  * @param {Object} [req.body.timeWindow] - Time window for the event (optional).
  * @param {number} req.body.timeWindow.start - Start time (Unix ms).
  * @param {number} req.body.timeWindow.end - End time (Unix ms).
  * @param {number} [req.body.duration] - Duration in milliseconds (optional).
- * @param {string} [req.body.status] - Event status ('draft', 'scheduling', 'scheduled', 'confirmed', 'cancelled') (optional).
+* @param {string} [req.body.status] - Event status ('scheduling', 'confirmed', 'cancelled') (optional).
  * @param {number} [req.body.scheduledTime] - Scheduled time (Unix ms) (optional).
- * @param {boolean} [req.body.public] - Whether the event is public (optional).
+* @param {string} [req.body.visibility] - Visibility ('draft','public','private') (optional; draft cannot be reverted to once changed).
  * @param {Array} [req.body.blackoutPeriods] - Blackout time ranges (optional).
  * @param {Array} [req.body.preferredTimes] - Preferred time ranges (optional).
+ * @param {Array} [req.body.dailyStartConstraints] - Intra-day start time ranges (milliseconds of day, 0-86,400,000).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated event object.
  */
@@ -162,8 +160,8 @@ router.delete('/:id',
  * @description Partially update user's settings for a specific event.
  * @access Private (members only)
  * @param {string} req.params.eventId - The ID of the event.
- * @param {number} [req.body.customPaddingAfter] - Custom padding after event (optional).
- * @param {string} [req.body.availabilityStatus] - Availability status: 'available', 'unavailable', 'tentative' (optional).
+ * @param {number} [req.body.customPaddingAfter] - Custom padding after event in milliseconds (optional).
+ * @param {string} [req.body.availabilityStatus] - Availability status: 'invited', 'available', 'unavailable' (optional).
  * @returns {number} res.status - The status code of the HTTP response.
  * @returns {Object} res.body - The updated user event settings object.
  */
@@ -183,21 +181,6 @@ router.patch('/:eventId/settings',
 router.get('/:eventId/settings',
 	ensureAuthenticated,
 	getUserEventSettings
-)
-
-/**
- * @route PATCH /api/v1/events/:id/members/role
- * @description Update a participant's role in an event.
- * @access Private (admins and creators only)
- * @param {string} req.params.id - The ID of the event.
- * @param {string} req.body.userId - The user ID whose role to update.
- * @param {string} req.body.role - The new role ('creator', 'admin', 'participant').
- * @returns {number} res.status - The status code of the HTTP response.
- * @returns {Object} res.body - The updated event object.
- */
-router.patch('/:id/members/role',
-	ensureAuthenticated,
-	updateParticipantRole
 )
 
 export default router
