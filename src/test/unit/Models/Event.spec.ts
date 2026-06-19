@@ -347,7 +347,7 @@ describe('Event Model', function () {
 			})
 
 			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				members: [
 					{
 						userId: testUser.id,
@@ -375,7 +375,7 @@ describe('Event Model', function () {
 			})
 
 			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				members: [
 					{
 						userId: testUser.id,
@@ -395,7 +395,7 @@ describe('Event Model', function () {
 
 		it('should default availability status to tentative', async function () {
 			const event = await EventModel.create({
-				...testEventFields,
+				...fixedEventFields,
 				members: [{
 					userId: testUser.id,
 					role: 'creator'
