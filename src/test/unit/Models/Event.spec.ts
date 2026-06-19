@@ -357,7 +357,7 @@ describe('Event Model', function () {
 					{
 						userId: secondUser._id,
 						role: 'participant',
-						availabilityStatus: 'tentative'
+						availabilityStatus: 'invited'
 					}
 				]
 			})
@@ -393,7 +393,7 @@ describe('Event Model', function () {
 			expect(participant!.role).to.equal('participant')
 		})
 
-		it('should default availability status to tentative', async function () {
+		it('should default availability status to invited', async function () {
 			const event = await EventModel.create({
 				...fixedEventFields,
 				members: [{
@@ -402,7 +402,7 @@ describe('Event Model', function () {
 				}]
 			})
 
-			expect(event.members[0].availabilityStatus).to.equal('tentative')
+			expect(event.members[0].availabilityStatus).to.equal('invited')
 		})
 	})
 })
