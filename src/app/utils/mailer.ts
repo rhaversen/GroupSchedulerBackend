@@ -1,9 +1,5 @@
-// Node.js built-in modules
-
-// Third-party libraries
 import nodemailer from 'nodemailer'
 
-// Own modules
 import logger from './logger.js'
 import config from './setupConfig.js'
 

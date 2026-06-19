@@ -37,7 +37,8 @@ describe('Event Model', function () {
 			name: 'Test Event',
 			description: 'A test event description',
 			members: [{
-				userId: testUser._id,
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				userId: testUser._id.toString() as any,
 				role: 'creator',
 				availabilityStatus: 'available'
 			}],
@@ -55,7 +56,7 @@ describe('Event Model', function () {
 			expect(event.name).to.equal(fixedEventFields.name)
 			expect(event.description).to.equal(fixedEventFields.description)
 			expect(event.members).to.have.lengthOf(1)
-			expect(event.members[0].userId.toString()).to.equal(testUser._id.toString())
+			expect(event.members[0].userId.toString()).to.equal(testUser.id.toString())
 			expect(event.members[0].role).to.equal('creator')
 			expect(event.duration).to.equal(fixedEventFields.duration)
 			expect(event.status).to.equal('confirmed')
@@ -334,6 +335,74 @@ describe('Event Model', function () {
 				})
 			} catch { errorOccurred = true }
 			expect(errorOccurred).to.be.true
+		})
+	})
+
+	describe('Multiple Members', function () {
+		it('should allow multiple members with different roles', async function () {
+			const secondUser = await UserModel.create({
+				username: 'secondUser',
+				email: 'second@example.com',
+				password: 'password123'
+			})
+
+			const event = await EventModel.create({
+				...testEventFields,
+				members: [
+					{
+						userId: testUser.id,
+						role: 'creator',
+						availabilityStatus: 'available'
+					},
+					{
+						userId: secondUser._id,
+						role: 'participant',
+						availabilityStatus: 'tentative'
+					}
+				]
+			})
+
+			expect(event.members).to.have.lengthOf(2)
+			expect(event.members.find(m => m.role === 'creator')).to.exist
+			expect(event.members.find(m => m.role === 'participant')).to.exist
+		})
+
+		it('should default member role to participant', async function () {
+			const secondUser = await UserModel.create({
+				username: 'secondUser',
+				email: 'second@example.com',
+				password: 'password123'
+			})
+
+			const event = await EventModel.create({
+				...testEventFields,
+				members: [
+					{
+						userId: testUser.id,
+						role: 'creator',
+						availabilityStatus: 'available'
+					},
+					{
+						userId: secondUser._id,
+						availabilityStatus: 'available'
+					}
+				]
+			})
+
+			const participant = event.members.find(m => m.userId.toString() === secondUser._id.toString())
+			expect(participant!.role).to.equal('participant')
+		})
+
+		it('should default availability status to tentative', async function () {
+			const event = await EventModel.create({
+				...testEventFields,
+				members: [{
+					userId: testUser.id,
+					role: 'creator'
+				}]
+			})
+
+			expect(event.members[0].availabilityStatus).to.equal('tentative')
 		})
 	})
 })

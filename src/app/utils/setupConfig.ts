@@ -15,6 +15,9 @@ const AppConfig = {
 	mongooseOpts: config.get('mongoose.options') as ConnectOptions,
 	maxRetryAttempts: config.get('mongoose.retrySettings.maxAttempts') as number,
 	retryInterval: config.get('mongoose.retrySettings.interval') as number, // in milliseconds
+	retryWrites: config.get('mongoose.options.retryWrites') as string,
+	w: config.get('mongoose.options.w') as string,
+	appName: config.get('mongoose.options.appName') as string,
 	bcryptSaltRounds: config.get('bcrypt.saltRounds') as number,
 	corsConfig: config.get('cors') as CorsOptions,
 	cookieOptions: config.get('cookieOptions') as CookieOptions,
