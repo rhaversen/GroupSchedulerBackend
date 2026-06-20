@@ -3,7 +3,7 @@
 # for production
 
 # Use an official Node.js runtime as the base image
-FROM node:lts-bookworm-slim
+FROM node:24-bookworm-slim
 
 # Use a non-interactive frontend for debconf
 ENV DEBIAN_FRONTEND=noninteractive
