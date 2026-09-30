@@ -17,7 +17,8 @@ export interface IEventCreateRequest {
 	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
 	dailyStartConstraints?: ITimeRange[]
-	schedulingMethod: 'fixed' | 'flexible'
+	type: 'fixed' | 'flexible'
+	status?: 'open' | 'locked'
 }
 
 // Partial update payload (PATCH). Some fields conditionally validated server-side.
@@ -28,15 +29,15 @@ export interface IEventUpdateRequest {
 		userId: string
 		role: 'creator' | 'admin' | 'participant'
 	}>,
-	status?: 'confirmed' | 'cancelled'
+	status?: 'open' | 'locked' | 'cancelled'
 	timeWindow?: ITimeRange
 	duration?: number
 	scheduledTime?: number
-	visibility?: 'public' | 'private'
+	visibility?: 'draft' | 'public' | 'private'
 	blackoutPeriods?: ITimeRange[]
 	preferredTimes?: ITimeRange[]
 	dailyStartConstraints?: ITimeRange[]
-	schedulingMethod?: 'fixed' | 'flexible'
+	type?: 'fixed' | 'flexible'
 }
 
 export type { ITimeRange } from './Event.js'

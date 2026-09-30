@@ -27,7 +27,7 @@ async function connectToMongoDB (): Promise<void> {
 		logger.info('Attempting connection to MongoDB')
 
 		try {
-			await mongoose.connect(mongoUri, mongooseOpts)
+			await mongoose.connect(mongoUri, { ...mongooseOpts })
 			logger.info('Connected to MongoDB')
 			return // Successfully connected
 		} catch (error) {

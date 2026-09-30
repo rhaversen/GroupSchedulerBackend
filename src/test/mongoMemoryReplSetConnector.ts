@@ -17,7 +17,7 @@ export default async function connectToInMemoryMongoDB (): Promise<void> {
 		await replSet.start()
 		await replSet.waitUntilRunning()
 		const mongoUri = replSet.getUri()
-		await mongoose.connect(mongoUri, mongooseOpts)
+		await mongoose.connect(mongoUri, { ...mongooseOpts })
 		logger.info('Connected to in-memory MongoDB')
 	} catch (error) {
 		if (error instanceof Error) {

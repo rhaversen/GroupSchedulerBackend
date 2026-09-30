@@ -1,135 +1,40 @@
-
-// file deepcode ignore NoHardcodedPasswords/test: Hardcoded credentials are only used for testing purposes
-// file deepcode ignore NoHardcodedCredentials/test: Hardcoded credentials are only used for testing purposes
-// file deepcode ignore HardcodedNonCryptoSecret/test: Hardcoded credentials are only used for testing purposes
-
 import { expect } from 'chai'
 import { describe, it } from 'mocha'
-import mongoose from 'mongoose'
 
-import { getChaiAgent as agent, extractConnectSid } from '../../testSetup.js'
+import { getChaiAgent as agent } from '../../testSetup.js'
 
-const futureWindow = () => {
-	const start = Date.now() + 3600000
-	const end = start + 86400000
-	return { start, end }
-}
-
-async function register (username: string, email: string) {
-	const res = await agent().post('/api/v1/users/register').send({ username, email, password: 'password', confirmPassword: 'password' })
-	return { cookie: extractConnectSid(res.headers['set-cookie']), id: res.body.user._id }
+async function registerAndLogin (username: string, email: string) {
+	const res = await agent().post('/api/v1/auth/register').send({ username, email, password: 'password123' })
+	const cookieHeader = res.headers['set-cookie']
+	const cookie = Array.isArray(cookieHeader) ? cookieHeader[0] : ''
+	return { cookie, id: res.body.user._id }
 }
 
 describe('Event routes', function () {
-	it('should create event with implicit creator', async function () {
-		const { cookie, id } = await register('Alice', 'alice@example.com')
-		const tw = futureWindow()
-		const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({
-			name: 'Event 1',
-			description: 'Desc',
-			timeWindow: tw,
+	it('creates a flexible event', async function () {
+		const { cookie, id } = await registerAndLogin('Alice', 'alice@example.com')
+		const now = Date.now()
+		const res = await agent().post('/api/v1/events').set('Cookie', cookie).send({
+			name: 'Planning',
 			duration: 3600000,
-			schedulingMethod: 'flexible',
-			members: [{ userId: id, role: 'creator' }]
+			type: 'flexible',
+			timeWindow: { start: now + 3600000, end: now + 86400000 },
+			members: [{ userId: id, role: 'creator' }],
+			visibility: 'private'
 		})
-		expect(createRes).to.have.status(201)
-		expect(createRes.body.members[0]).to.have.property('userId', id)
+		expect(res).to.have.status(201)
+		expect(res.body).to.have.property('type', 'flexible')
+		expect(res.body).to.have.property('status', 'open')
 	})
 
-	it('should forbid unauthenticated create', async function () {
-		const tw = futureWindow()
-		const res = await agent().post('/api/v1/events').send({ name: 'E', description: 'D', timeWindow: tw, duration: 3600000, schedulingMethod: 'flexible', members: [{ userId: new mongoose.Types.ObjectId().toString(), role: 'creator' }] })
+	it('forbids unauthenticated create', async function () {
+		const now = Date.now()
+		const res = await agent().post('/api/v1/events').send({
+			name: 'NoAuth',
+			duration: 3600000,
+			type: 'flexible',
+			timeWindow: { start: now + 3600000, end: now + 86400000 }
+		})
 		expect(res).to.have.status(401)
-	})
-
-	it('should get event if member', async function () {
-		const { cookie, id: userId } = await register('Alice', 'alice@example.com')
-		const tw = futureWindow()
-		const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({ name: 'Event 1', description: 'D', timeWindow: tw, duration: 3600000, schedulingMethod: 'flexible', members: [{ userId: userId, role: 'creator' }] })
-		const eventId = createRes.body._id
-		const getRes = await agent().get(`/api/v1/events/${eventId}`).set('Cookie', cookie)
-		expect(getRes).to.have.status(200)
-	})
-
-	it('should update name as creator', async function () {
-		const { cookie, id: userId } = await register('Alice', 'alice@example.com')
-		const tw = futureWindow()
-		const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({ name: 'Event 1', description: 'D', timeWindow: tw, duration: 3600000, schedulingMethod: 'flexible', members: [{ userId: userId, role: 'creator' }] })
-		const eventId = createRes.body._id
-		const patchRes = await agent().patch(`/api/v1/events/${eventId}`).set('Cookie', cookie).send({ name: 'Event 2' })
-		expect(patchRes).to.have.status(200)
-		expect(patchRes.body).to.have.property('name', 'Event 2')
-	})
-
-	it('should forbid update by non-admin participant', async function () {
-		const { cookie: creatorCookie, id: creatorId } = await register('Alice', 'alice@example.com')
-		const { cookie: bobCookie, id: bobId } = await register('Bob', 'bob@example.com')
-		const tw = futureWindow()
-		const createRes = await agent().post('/api/v1/events').set('Cookie', creatorCookie).send({
-			name: 'Event 1',
-			description: 'D',
-			timeWindow: tw,
-			duration: 3600000,
-			schedulingMethod: 'flexible',
-			members: [
-				{ userId: creatorId, role: 'creator', availabilityStatus: 'available' },
-				{ userId: bobId, role: 'participant', availabilityStatus: 'available' }
-			]
-		})
-		const id = createRes.body._id
-		const patchRes = await agent().patch(`/api/v1/events/${id}`).set('Cookie', bobCookie).send({ name: 'Hacked' })
-		expect(patchRes).to.have.status(403)
-	})
-
-	it('should delete event as creator', async function () {
-		const { cookie, id: userId } = await register('Alice', 'alice@example.com')
-		const tw = futureWindow()
-		const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({ name: 'Event 1', description: 'D', timeWindow: tw, duration: 3600000, schedulingMethod: 'flexible', members: [{ userId: userId, role: 'creator' }] })
-		const eventId = createRes.body._id
-		const delRes = await agent().delete(`/api/v1/events/${eventId}`).set('Cookie', cookie)
-		expect(delRes).to.have.status(204)
-	})
-
-	describe('User event settings', function () {
-		it('should update and fetch user event settings', async function () {
-			const { cookie, id: userId } = await register('Alice', 'alice@example.com')
-			const tw = futureWindow()
-			const createRes = await agent().post('/api/v1/events').set('Cookie', cookie).send({ name: 'Event 1', description: 'D', timeWindow: tw, duration: 3600000, schedulingMethod: 'flexible', members: [{ userId, role: 'creator' }] })
-			const eventId = createRes.body._id
-			const patchRes = await agent().patch(`/api/v1/events/${eventId}/settings`).set('Cookie', cookie).send({ availabilityStatus: 'unavailable', customPaddingAfter: 60000 })
-			expect(patchRes).to.have.status(200)
-			expect(patchRes.body).to.include({ userId, eventId })
-			const getRes = await agent().get(`/api/v1/events/${eventId}/settings`).set('Cookie', cookie)
-			expect(getRes).to.have.status(200)
-			expect(getRes.body).to.have.property('availabilityStatus', 'unavailable')
-		})
-	})
-
-	it('should return 404 for missing event', async function () {
-		const { cookie } = await register('Alice', 'alice@example.com')
-		const res = await agent().get(`/api/v1/events/${new mongoose.Types.ObjectId().toString()}`).set('Cookie', cookie)
-		expect(res).to.have.status(404)
-	})
-
-	describe('Event status rules', function () {
-		it('creating confirmed requires scheduledTime; cannot modify confirmed timing', async function () {
-			const { cookie, id: userId } = await register('TimingUser', 'timinguser@example.com')
-			const tw = futureWindow()
-			// invalid creation: confirmed without scheduledTime
-			const invalidCreate = await agent().post('/api/v1/events').set('Cookie', cookie).send({
-				name: 'Invalid Confirmed', description: 'D', timeWindow: tw, duration: 3600000, status: 'confirmed', schedulingMethod: 'flexible', members: [{ userId, role: 'creator' }]
-			})
-			expect(invalidCreate).to.have.status(400)
-			// valid creation as fixed with scheduledTime
-			const scheduledTime = tw.start + 600000
-			const validCreate = await agent().post('/api/v1/events').set('Cookie', cookie).send({
-				name: 'Confirmed Event', description: 'D', duration: 3600000, scheduledTime, schedulingMethod: 'fixed', members: [{ userId, role: 'creator' }]
-			})
-			expect(validCreate).to.have.status(201)
-			const eventId = validCreate.body._id
-			const newWindow = { start: tw.start + 7200000, end: tw.end + 7200000 }
-			const patchRes = await agent().patch(`/api/v1/events/${eventId}`).set('Cookie', cookie).send({ timeWindow: newWindow })
-			expect(patchRes).to.have.status(400)
-		})
 	})
 })

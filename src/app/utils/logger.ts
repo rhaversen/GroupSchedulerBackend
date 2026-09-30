@@ -31,37 +31,24 @@ const winstonLogger = createLogger({
 		_format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:SSS' }),
 		_format.json()
 	),
-	defaultMeta: { service: 'group-scheduler-backend' }, // Set a default metadata field
+	defaultMeta: { service: 'group-scheduler-backend' },
 	transports: [
-		new _transports.File({
-			filename: join(logDirectory, 'error.log'),
-			level: 'error'
-		}),
-		new _transports.File({
-			filename: join(logDirectory, 'info.log'),
-			level: 'info'
-		}),
-		new _transports.File({
-			filename: join(logDirectory, 'combined.log'),
-			level: 'silly'
-		}),
+		new _transports.File({ filename: join(logDirectory, 'error.log'), level: 'error' }),
+		new _transports.File({ filename: join(logDirectory, 'info.log'), level: 'info' }),
+		new _transports.File({ filename: join(logDirectory, 'combined.log'), level: 'silly' }),
 		new _transports.Console({
 			format: _format.combine(
 				_format.colorize(),
 				_format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
-				_format.printf((logObject) => {
-					return `${logObject.timestamp} ${logObject.level}: ${logObject.message}`
-				})
+				_format.printf((logObject) => `${logObject.timestamp} ${logObject.level}: ${logObject.message}`)
 			),
 			level: logLevel[process.env.NODE_ENV as keyof typeof logLevel] ?? 'info'
 		})
 	]
 })
 
-// Instantiate betterStackLogger lazily only in production/staging
 let betterStackLogger: Logtail | null = null
 
-// Helper to handle BetterStack logging non-blocking
 const logToBetterStackNonBlocking = (
 	level: 'error' | 'warn' | 'info' | 'debug',
 	message: string,
@@ -75,7 +62,6 @@ const logToBetterStackNonBlocking = (
 		betterStackLogger = new Logtail(BETTERSTACK_LOG_TOKEN)
 	}
 
-	// Sanitize context, especially Error objects
 	let sanitizedContext = context
 	if (context?.error instanceof Error) {
 		sanitizedContext = { ...context }
@@ -87,9 +73,7 @@ const logToBetterStackNonBlocking = (
 		}
 	}
 
-	// Use a non-blocking approach with .catch()
 	betterStackLogger[level](message, sanitizedContext).catch((error) => {
-		// Log BetterStack errors to Winston to avoid infinite loops
 		winstonLogger.error(`Error logging to BetterStack: ${error instanceof Error ? error.toString() : String(error)}`, { error })
 	})
 }

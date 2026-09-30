@@ -7,27 +7,20 @@ import logger from './logger.js'
 
 const configString = JSON.stringify(config.util.toObject(config), null, 4)
 
-// Log the configs used
 logger.debug(`Using configs:\n${configString}`)
 
 const AppConfig = {
 	expressPort: config.get('expressPort') as number,
 	mongooseOpts: config.get('mongoose.options') as ConnectOptions,
 	maxRetryAttempts: config.get('mongoose.retrySettings.maxAttempts') as number,
-	retryInterval: config.get('mongoose.retrySettings.interval') as number, // in milliseconds
+	retryInterval: config.get('mongoose.retrySettings.interval') as number,
 	retryWrites: config.get('mongoose.options.retryWrites') as string,
 	w: config.get('mongoose.options.w') as string,
 	appName: config.get('mongoose.options.appName') as string,
-	bcryptSaltRounds: config.get('bcrypt.saltRounds') as number,
 	corsConfig: config.get('cors') as CorsOptions,
 	cookieOptions: config.get('cookieOptions') as CookieOptions,
 	sessionExpiry: config.get('session.expiry') as number,
-	redisPrefix: config.get('redis.prefix') as string,
-	verificationExpiry: config.get('user.verificationExpiry') as number,
-	passwordResetExpiry: config.get('user.passwordResetExpiry') as number,
-	frontendDomain: config.get('frontendDomain') as string,
-	emailFrom: config.get('email.from') as string,
-	emailPort: config.get('email.port') as number
+	redisPrefix: config.get('redis.prefix') as string
 }
 
 export default AppConfig

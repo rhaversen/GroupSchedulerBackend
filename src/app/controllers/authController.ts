@@ -1,117 +1,77 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import passport from 'passport'
 
-import { type IUser } from '../models/User.js'
+import UserModel, { type IUser } from '../models/User.js'
 import logger from '../utils/logger.js'
 import { getIPAddress } from '../utils/sessionUtils.js'
 import config from '../utils/setupConfig.js'
 
-import { transformUser } from './userController.js'
-
-// Config variables
 const { sessionExpiry } = config
 
-export async function loginUserLocal (req: Request, res: Response, next: NextFunction): Promise<void> {
-	const email = req.body.email ?? 'N/A'
-	const password = req.body.password ?? 'N/A'
-	logger.info(`Attempting local login for user: ${email}`)
+function toPublicUser (user: IUser) {
+	return { _id: user.id, username: user.username, email: user.email }
+}
 
-	// Check if name and password are provided
-	if (email === undefined || password === undefined) {
-		logger.warn(`User login failed: Missing name or password for user: ${email}`)
-		res.status(400).json({
-			auth: false,
-			error: 'Name and password are required'
+export async function register (req: Request, res: Response, next: NextFunction): Promise<void> {
+	try {
+		const { username, email, password } = req.body as { username: string; email: string; password: string }
+		logger.info(`Attempting registration for user: ${email}`)
+		const user = await UserModel.create({ username, email, password })
+		req.login(user, err => {
+			if (err != null) { next(err); return }
+			req.session.ipAddress = getIPAddress(req)
+			req.session.loginTime = new Date()
+			req.session.lastActivity = new Date()
+			req.session.userAgent = req.headers['user-agent']
+			req.session.type = 'user'
+			req.session.cookie.maxAge = sessionExpiry
+			res.status(201).json({ user: toPublicUser(user) })
 		})
-		return
+	} catch (error) {
+		next(error)
 	}
+}
 
-	passport.authenticate('user-local', (err: Error | null, user: Express.User | false | null, info?: { message: string }) => { // Adjusted types
-		if (err !== null && err !== undefined) {
-			logger.error(`User login error during authentication for ${email}:`, { error: err })
-			return res.status(500).json({
-				auth: false,
-				error: err.message
-			})
-		}
-
-		if (user === null || user === undefined || user === false) {
-			const message = info?.message ?? 'Authentication failed'
-			logger.warn(`User login failed for ${email}: ${message}`)
-			return res.status(401).json({
-				auth: false,
-				error: message
-			})
-		}
-
-		req.logIn(user, async (loginErr) => {
-			if (loginErr !== null && loginErr !== undefined) {
-				logger.error(`User login error during req.logIn for ${email}:`, { error: loginErr })
-				return res.status(500).json({
-					auth: false,
-					error: loginErr.message
-				})
-			}
-
-			// Store session data
-			try {
-				req.session.ipAddress = getIPAddress(req)
-				req.session.loginTime = new Date()
-				req.session.userAgent = req.headers['user-agent']
-
-				// Set maxAge for persistent sessions if requested
-				if (req.body.stayLoggedIn === true || req.body.stayLoggedIn === 'true') {
-					logger.debug(`Setting persistent session for user ${email}`)
-					req.session.cookie.maxAge = sessionExpiry
-				}
-
-				// We can assume user is the current user here, since they just logged in
-				const transformedUser = await transformUser(user as IUser, true)
-
-				logger.info(`User ${email} (ID: ${transformedUser._id}) logged in successfully. Session ID: ${req.sessionID}`)
-				res.status(200).json({
-					auth: true,
-					user: transformedUser
-				})
-			} catch (sessionError) {
-				logger.error(`User login failed: Error during session handling for ${email}:`, { error: sessionError })
-				next(sessionError)
-			}
+export function login (req: Request, res: Response, next: NextFunction): void {
+	const email = req.body.email ?? 'N/A'
+	logger.info(`Attempting local login for user: ${email}`)
+	passport.authenticate('local', (err: Error | null, user: IUser | false) => {
+		if (err != null) { next(err); return }
+		if (!user) { res.status(401).json({ error: 'Invalid credentials' }); return }
+		req.login(user, loginErr => {
+			if (loginErr != null) { next(loginErr); return }
+			req.session.ipAddress = getIPAddress(req)
+			req.session.loginTime = new Date()
+			req.session.lastActivity = new Date()
+			req.session.userAgent = req.headers['user-agent']
+			req.session.type = 'user'
+			req.session.cookie.maxAge = sessionExpiry
+			res.status(200).json({ user: toPublicUser(user) })
 		})
 	})(req, res, next)
 }
 
-export async function logoutLocal (req: Request, res: Response, next: NextFunction): Promise<void> {
-	const sessionId = req.sessionID
-	const user = req.user as IUser | null
-	logger.info(`Attempting logout for user: ${user?.email}, Session ID: ${sessionId}`)
-
-	req.logout(function (err) {
-		if (err !== null && err !== undefined) {
-			logger.error(`Logout error during req.logout for Session ID ${sessionId}:`, { error: err })
-		}
-
-		req.session.destroy(function (sessionErr) {
-			if (sessionErr !== null && sessionErr !== undefined) {
-				logger.error(`Logout error during session.destroy for Session ID ${sessionId}:`, { error: sessionErr })
-				next(sessionErr)
-				return
-			}
+export function logout (req: Request, res: Response, next: NextFunction): void {
+	logger.info(`Attempting logout for session ID: ${req.sessionID}`)
+	req.logout(err => {
+		if (err != null) { next(err); return }
+		req.session.destroy(sessionErr => {
+			if (sessionErr != null) { next(sessionErr); return }
 			res.clearCookie('connect.sid')
-			logger.info(`Logout successful for Session ID: ${sessionId}`)
-			res.status(200).json({ message: 'Logout successful' })
+			res.status(200).json({ message: 'Logged out' })
 		})
 	})
 }
 
-export function ensureAuthenticated (req: Request, res: Response, next: NextFunction): void {
-	logger.debug(`Ensuring authentication for request to ${req.originalUrl}, Session ID: ${req.sessionID}`)
+export function status (req: Request, res: Response): void {
+	const user = req.user as IUser | undefined
+	res.status(200).json({ user: user != null ? toPublicUser(user) : null })
+}
 
+export function ensureAuthenticated (req: Request, res: Response, next: NextFunction): void {
 	if (!req.isAuthenticated()) {
-		logger.warn(`Authentication check failed for Session ID: ${req.sessionID}, Path: ${req.originalUrl}`)
-		res.status(401).json({ message: 'Unauthorized' })
+		res.status(401).json({ error: 'Unauthorized' })
 		return
 	}
-	logger.silly(`Authentication check passed for Session ID: ${req.sessionID}`)
 	next()
 }
