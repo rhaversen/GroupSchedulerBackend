@@ -1,5 +1,5 @@
 const requiredInAllEnvironments = ['SESSION_SECRET']
-const requiredInProduction = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME']
+const requiredInProduction = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_NAME', 'BETTERSTACK_LOG_TOKEN']
 
 for (const key of requiredInAllEnvironments) {
 	if ((process.env[key] ?? '') === '') {

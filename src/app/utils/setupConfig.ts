@@ -11,7 +11,7 @@ logger.debug(`Using configs:\n${configString}`)
 
 const AppConfig = {
 	expressPort: config.get('expressPort') as number,
-	mongooseOpts: config.get('mongoose.options') as ConnectOptions,
+	mongooseOpts: { ...config.get('mongoose.options') } as ConnectOptions,
 	maxRetryAttempts: config.get('mongoose.retrySettings.maxAttempts') as number,
 	retryInterval: config.get('mongoose.retrySettings.interval') as number,
 	retryWrites: config.get('mongoose.options.retryWrites') as string,
